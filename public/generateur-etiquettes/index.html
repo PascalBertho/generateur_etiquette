@@ -576,6 +576,7 @@
 
 
   .filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .filter-grid-3{grid-template-columns:1fr 1fr 1.35fr;}
   .article-filter-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px;}
   .article-checklist{margin-top:10px;border:1px solid var(--line);border-radius:7px;background:#fff;max-height:270px;overflow:auto;padding:4px;}
   .article-check-row{display:grid;grid-template-columns:24px 100px 1fr 105px;gap:7px;align-items:start;padding:7px 6px;border-bottom:1px solid var(--panel-2);font-size:11.5px;cursor:pointer;}
@@ -586,7 +587,7 @@
   .article-check-row .article-ean{text-align:right;color:var(--ink-soft);font-family:monospace;}
   .article-check-empty{padding:18px;text-align:center;color:var(--ink-soft);font-size:12px;}
   .selection-summary{font-size:12px;font-weight:600;color:var(--accent);margin-top:8px;}
-  @media (max-width:520px){.filter-grid{grid-template-columns:1fr}.article-check-row{grid-template-columns:24px 82px 1fr}.article-check-row .article-ean{grid-column:2/4;text-align:left;}}
+  @media (max-width:760px){.filter-grid,.filter-grid-3{grid-template-columns:1fr}.article-check-row{grid-template-columns:24px 82px 1fr}.article-check-row .article-ean{grid-column:2/4;text-align:left;}}
 
   /* Print rules */
   @page{
@@ -640,8 +641,8 @@
     <h2>Données de l'étiquette</h2>
 
     <div class="database-panel no-print">
-      <h3>Sélection des articles</h3>
-      <div class="filter-grid">
+      <h3>Sélection de l'article</h3>
+      <div class="filter-grid filter-grid-3">
         <div class="field" style="margin:0;">
           <label>1. Secteur</label>
           <select id="filterSecteur"><option value="Tous">Tous</option></select>
@@ -650,28 +651,20 @@
           <label>2. Groupe</label>
           <select id="filterGroupe"><option value="Tous">Tous</option></select>
         </div>
+        <div class="field" style="margin:0;">
+          <label>3. Article</label>
+          <select id="filterArticle"><option value="">-- Choisir un article --</option></select>
+        </div>
       </div>
       <div class="article-filter-row">
         <div class="field" style="margin:0;">
-          <label>3. Articles à imprimer</label>
-          <input type="search" id="articleSearch" placeholder="Réf. DS, EAN, fournisseur ou libellé" autocomplete="off">
+          <label>Recherche dans les articles affichés</label>
+          <input type="search" id="articleSearch" placeholder="Réf. DS ou libellé" autocomplete="off">
         </div>
         <button type="button" class="btn btn-outline" id="refreshArticlesBtn">Actualiser</button>
       </div>
-      <label class="article-check-row" style="margin-top:10px;background:var(--panel);font-weight:700;">
-        <input type="checkbox" id="selectAllArticles">
-        <span class="article-ref">Tous</span>
-        <span>Sélectionner tous les articles affichés</span>
-        <span></span>
-      </label>
-      <div id="articleChecklist" class="article-checklist"><div class="article-check-empty">Chargement des secteurs…</div></div>
-      <div class="selection-summary" id="selectionSummary">0 article sélectionné</div>
-      <div class="article-actions">
-        <button type="button" class="btn btn-primary" id="addSelectedArticlesBtn" disabled>Ajouter les articles cochés</button>
-        <button type="button" class="btn btn-outline" id="clearArticleSelectionBtn">Décocher tout</button>
-      </div>
-      <div class="database-status" id="databaseStatus">Connexion à la vue articles prête.</div>
-      <div class="mapping-help">Secteur et groupe proviennent de la vue <strong>v_articles_etiquettes</strong>. La photo reste manuelle et peut être ajoutée après sélection.</div>
+      <div class="database-status" id="databaseStatus">Chargement des secteurs…</div>
+      <div class="mapping-help">Le premier menu lit les valeurs uniques de <strong>famille.activite_ds</strong>, le deuxième <strong>familles.groupe</strong>, et le troisième <strong>articles.articles_numero</strong>. Le choix de l'article remplit automatiquement les champs ci-dessous.</div>
     </div>
 
     <div class="field">
@@ -816,7 +809,7 @@ async function apiCatalogue(params){
   return payload;
 }
 
-function remplirSelect(select, values){
+function remplirSelectTous(select, values){
   const courant = select.value;
   select.innerHTML = '<option value="Tous">Tous</option>';
   values.forEach(value => {
@@ -825,103 +818,110 @@ function remplirSelect(select, values){
   if([...select.options].some(option => option.value === courant)) select.value=courant;
 }
 
+function remplirSelectArticles(articles){
+  const select=document.getElementById('filterArticle');
+  const courant=select.value;
+  select.innerHTML='<option value="">-- Choisir un article --</option><option value="Tous">Tous</option>';
+  articles.forEach(article => {
+    const option=document.createElement('option');
+    option.value=article.numero;
+    option.textContent=(article.numero || '—') + (article.libelle ? ' — ' + article.libelle : '');
+    select.appendChild(option);
+  });
+  if([...select.options].some(option => option.value===courant)) select.value=courant;
+}
+
 async function chargerSecteurs(){
   const status=document.getElementById('databaseStatus');
   try{
     status.textContent='Chargement des secteurs…';
     const payload=await apiCatalogue({action:'secteurs'});
-    remplirSelect(document.getElementById('filterSecteur'), payload.secteurs || []);
+    remplirSelectTous(document.getElementById('filterSecteur'), payload.secteurs || []);
     await chargerGroupes();
   }catch(error){ status.textContent='Erreur : '+error.message; }
 }
 
 async function chargerGroupes(){
-  const secteur=document.getElementById('filterSecteur').value;
+  const activite=document.getElementById('filterSecteur').value;
   const status=document.getElementById('databaseStatus');
   try{
     status.textContent='Chargement des groupes…';
-    const payload=await apiCatalogue({action:'groupes', secteur});
-    remplirSelect(document.getElementById('filterGroupe'), payload.groupes || []);
-    await chargerArticlesFiltres();
+    const payload=await apiCatalogue({action:'groupes', activite_ds:activite});
+    remplirSelectTous(document.getElementById('filterGroupe'), payload.groupes || []);
+    await chargerArticles();
   }catch(error){ status.textContent='Erreur : '+error.message; }
 }
 
-function articleKey(article){ return String(article.id || (article.refds+':'+article.barcode)); }
-
-function renderArticleChecklist(){
-  const wrap=document.getElementById('articleChecklist');
-  wrap.innerHTML='';
-  if(!catalogueArticles.length){
-    wrap.innerHTML='<div class="article-check-empty">Aucun article pour ces critères.</div>';
-    updateSelectionSummary(); return;
-  }
-  catalogueArticles.forEach(article => {
-    const label=document.createElement('label');
-    label.className='article-check-row';
-    const checkbox=document.createElement('input'); checkbox.type='checkbox'; checkbox.className='article-select'; checkbox.value=articleKey(article);
-    checkbox.addEventListener('change', updateSelectionSummary);
-    const ref=document.createElement('span'); ref.className='article-ref'; ref.textContent=article.refds || '—';
-    const lib=document.createElement('span'); lib.textContent=article.libelle || 'Sans libellé';
-    const ean=document.createElement('span'); ean.className='article-ean'; ean.textContent=article.barcode || 'sans code';
-    label.append(checkbox,ref,lib,ean); wrap.appendChild(label);
-  });
-  updateSelectionSummary();
-}
-
-async function chargerArticlesFiltres(){
+async function chargerArticles(){
   const status=document.getElementById('databaseStatus');
-  const params={action:'articles', secteur:document.getElementById('filterSecteur').value, groupe:document.getElementById('filterGroupe').value};
-  const q=document.getElementById('articleSearch').value.trim(); if(q) params.q=q;
+  const params={
+    action:'articles',
+    activite_ds:document.getElementById('filterSecteur').value,
+    groupe:document.getElementById('filterGroupe').value
+  };
+  const q=document.getElementById('articleSearch').value.trim();
+  if(q) params.q=q;
   try{
     status.textContent='Chargement des articles…';
     const payload=await apiCatalogue(params);
     catalogueArticles=Array.isArray(payload.articles)?payload.articles:[];
-    renderArticleChecklist();
-    status.textContent=catalogueArticles.length+' article(s) affiché(s).';
-  }catch(error){ catalogueArticles=[]; renderArticleChecklist(); status.textContent='Erreur : '+error.message; }
-}
-
-function selectedArticleKeys(){ return new Set([...document.querySelectorAll('.article-select:checked')].map(cb => cb.value)); }
-
-function updateSelectionSummary(){
-  const count=document.querySelectorAll('.article-select:checked').length;
-  document.getElementById('selectionSummary').textContent=count+' article'+(count>1?'s':'')+' sélectionné'+(count>1?'s':'');
-  document.getElementById('addSelectedArticlesBtn').disabled=count===0;
-  const all=document.querySelectorAll('.article-select').length;
-  const selectAll=document.getElementById('selectAllArticles');
-  selectAll.checked=all>0 && count===all; selectAll.indeterminate=count>0 && count<all;
+    remplirSelectArticles(catalogueArticles);
+    status.textContent=catalogueArticles.length+' article(s) disponible(s).';
+  }catch(error){
+    catalogueArticles=[];
+    remplirSelectArticles([]);
+    status.textContent='Erreur : '+error.message;
+  }
 }
 
 function articleVersEtiquette(article){
   return {
-    photo:null, barcode:article.barcode || '', barcodeType:article.barcodeType || (/^\d{13}$/.test(article.barcode||'')?'EAN13':'CODE128'),
-    refds:article.refds || '', reffour:article.reffour || '', famille:article.famille || '', groupeArticles:article.groupeArticles || '', secteur:article.secteur || '',
-    secteurPhoto:null, remise:article.remise || '', libelle:article.libelle || '', prix:article.prix || ''
+    photo:null,
+    barcode:article.barcode || '',
+    barcodeType:article.barcodeType || (/^\d{13}$/.test(article.barcode||'')?'EAN13':'CODE128'),
+    refds:article.refds || '',
+    reffour:article.reffour || '',
+    famille:article.famille || '',
+    groupeArticles:article.groupeArticles || '',
+    secteur:article.secteur || article.activiteDs || '',
+    secteurPhoto:null,
+    remise:article.remise || '',
+    libelle:article.libelle || '',
+    prix:article.prix || ''
   };
 }
 
-function ajouterArticlesSelectionnes(){
-  const keys=selectedArticleKeys();
-  const selection=catalogueArticles.filter(article => keys.has(articleKey(article)));
-  const existants=new Set(labels.map(label => [label.refds,label.barcode].join('|')));
-  let ajoutes=0;
-  selection.forEach(article => {
-    const data=articleVersEtiquette(article); const key=[data.refds,data.barcode].join('|');
-    if(!existants.has(key)){ labels.push(data); existants.add(key); ajoutes++; }
-  });
-  renderQueue();
-  document.getElementById('databaseStatus').textContent=ajoutes+' étiquette(s) ajoutée(s) à la file.';
-}
-
-function clearArticleSelection(){ document.querySelectorAll('.article-select').forEach(cb => cb.checked=false); updateSelectionSummary(); }
-
 function chargerArticleDansFormulaire(article){
   const data=articleVersEtiquette(article);
-  document.getElementById('barcodeType').value=data.barcodeType; document.getElementById('barcode').value=data.barcode;
-  document.getElementById('refds').value=data.refds; document.getElementById('reffour').value=data.reffour;
-  document.getElementById('famille').value=data.famille; document.getElementById('secteur').value=data.secteur;
-  document.getElementById('remise').value=data.remise; document.getElementById('libelle').value=data.libelle; document.getElementById('prix').value=data.prix;
+  document.getElementById('barcodeType').value=data.barcodeType;
+  document.getElementById('barcode').value=data.barcode;
+  document.getElementById('refds').value=data.refds;
+  document.getElementById('reffour').value=data.reffour;
+  document.getElementById('famille').value=data.famille;
+  const secteurSelect=document.getElementById('secteur');
+  if(data.secteur && ![...secteurSelect.options].some(option => option.value===data.secteur)){
+    const option=document.createElement('option'); option.value=data.secteur; option.textContent=data.secteur; secteurSelect.appendChild(option);
+  }
+  secteurSelect.value=data.secteur;
+  document.getElementById('remise').value=data.remise;
+  document.getElementById('libelle').value=data.libelle;
+  document.getElementById('prix').value=data.prix;
   applyBarcodeTypeUI();
+}
+
+async function chargerDetailArticle(){
+  const numero=document.getElementById('filterArticle').value;
+  const status=document.getElementById('databaseStatus');
+  if(!numero || numero==='Tous'){
+    status.textContent=numero==='Tous' ? 'Sélectionnez un article précis pour remplir les champs.' : 'Choisissez un article.';
+    return;
+  }
+  try{
+    status.textContent='Chargement de l’article '+numero+'…';
+    const payload=await apiCatalogue({action:'detail', numero});
+    chargerArticleDansFormulaire(payload.article || {});
+    status.textContent='Article '+numero+' chargé dans le formulaire.';
+  }catch(error){ status.textContent='Erreur : '+error.message; }
 }
 
 const LABEL_FORMATS = {
@@ -1414,21 +1414,16 @@ document.getElementById('printBtn').addEventListener('click', () => {
 });
 
 document.getElementById('filterSecteur').addEventListener('change', chargerGroupes);
-document.getElementById('filterGroupe').addEventListener('change', chargerArticlesFiltres);
+document.getElementById('filterGroupe').addEventListener('change', chargerArticles);
+document.getElementById('filterArticle').addEventListener('change', chargerDetailArticle);
 document.getElementById('articleSearch').addEventListener('input', () => {
   clearTimeout(articleSearchTimer);
-  articleSearchTimer = setTimeout(chargerArticlesFiltres, 300);
+  articleSearchTimer = setTimeout(chargerArticles, 300);
 });
 document.getElementById('articleSearch').addEventListener('keydown', (event) => {
-  if(event.key === 'Enter'){ event.preventDefault(); clearTimeout(articleSearchTimer); chargerArticlesFiltres(); }
+  if(event.key === 'Enter'){ event.preventDefault(); clearTimeout(articleSearchTimer); chargerArticles(); }
 });
-document.getElementById('refreshArticlesBtn').addEventListener('click', chargerArticlesFiltres);
-document.getElementById('selectAllArticles').addEventListener('change', (event) => {
-  document.querySelectorAll('.article-select').forEach(cb => { cb.checked = event.target.checked; });
-  updateSelectionSummary();
-});
-document.getElementById('addSelectedArticlesBtn').addEventListener('click', ajouterArticlesSelectionnes);
-document.getElementById('clearArticleSelectionBtn').addEventListener('click', clearArticleSelection);
+document.getElementById('refreshArticlesBtn').addEventListener('click', chargerArticles);
 
 chargerSecteurs();
 
