@@ -50,7 +50,7 @@ function config() {
   return {
     url,
     key,
-    famillesTable: process.env.FAMILLES_TABLE || "famille",
+    famillesTable: process.env.FAMILLES_TABLE || "familles",
     articlesTable: process.env.ARTICLES_TABLE || "articles",
     codesTable: process.env.CODES_BARRES_TABLE || "ds_code_barre",
     correspondanceTable: process.env.CORRESPONDANCE_TABLE || "correspondance",
