@@ -1,0 +1,10 @@
+app/page.tsx                         Redirection vers le générateur
+app/login/page.tsx                   Écran de connexion
+app/api/auth/login/route.ts          Création de la session sécurisée
+app/api/auth/logout/route.ts         Déconnexion
+app/api/articles/route.ts            Recherche serveur dans Supabase
+public/generateur-etiquettes/index.html  Générateur HTML complet
+proxy.ts                             Protection du générateur et de l'API
+lib-auth.ts                          Signature et validation de session
+.env.example                         Variables à configurer
+README.md                            Installation locale et Vercel

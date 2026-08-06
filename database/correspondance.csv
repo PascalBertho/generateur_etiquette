@@ -1,0 +1,9 @@
+﻿activite_ds,groupe_articles,secteur,source_ligne
+1_CHEM,CHEM,Cheminées,2
+2_VENT,VENTIL,Ventilation,3
+3_PV_ACC,--,--,4
+5_ACCT,ACTH,Accumulateur thermique,5
+6_EQU_A,EQUIP,Equipement,6
+6_EQU_E,EQUIP,Equipement,7
+7_AQUA,EAU,Traitement d'eau,8
+8_PAC,PAC,Pompe à chaleur et climatisation,9

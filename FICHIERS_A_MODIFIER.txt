@@ -1,0 +1,9 @@
+REMPLACER :
+- app/api/articles/route.ts
+- public/generateur-etiquettes/index.html
+- .env.example
+- README.md
+
+CREER :
+- supabase/01_update_view_articles_etiquettes.sql
+- supabase/02_validation_view.sql
