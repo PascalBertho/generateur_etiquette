@@ -19,6 +19,12 @@ type VueArticle = {
   ds_code_barre_id?: unknown;
 };
 
+type CorrespondanceRow = {
+  activite_ds?: unknown;
+  groupe_articles?: unknown;
+  secteur?: unknown;
+};
+
 type ArticleEtiquette = {
   id: string;
   refds: string;
@@ -36,7 +42,8 @@ type ArticleEtiquette = {
 };
 
 const CACHE_MS = 5 * 60 * 1000;
-let cache: { expiresAt: number; rows: ArticleEtiquette[] } | null = null;
+let cacheArticles: { expiresAt: number; rows: ArticleEtiquette[] } | null = null;
+let cacheCorrespondances: { expiresAt: number; rows: CorrespondanceRow[] } | null = null;
 
 function texte(value: unknown): string {
   return value === undefined || value === null ? "" : String(value).trim();
@@ -71,29 +78,27 @@ function mapper(row: VueArticle): ArticleEtiquette {
     groupe: texte(row.groupe),
     activiteDs: texte(row.activite_ds),
     groupeArticles: texte(row.groupe_articles_code_barre),
-    secteur: texte(row.secteur) || texte(row.activite_ds),
+    secteur: texte(row.secteur),
     libelle: texte(row.libelle),
     prix: Number.isFinite(prixNombre) ? prixNombre.toFixed(2) : "",
     remise: texte(row.code_remise),
   };
 }
 
-async function chargerVue(): Promise<ArticleEtiquette[]> {
-  if (cache && cache.expiresAt > Date.now()) return cache.rows;
-
+function configurationSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const secretKey = process.env.SUPABASE_SECRET_KEY;
   if (!supabaseUrl || !secretKey) {
     throw new Error("Configuration Supabase incomplète");
   }
+  return { supabaseUrl, secretKey };
+}
 
-  const view = process.env.ARTICLES_VIEW || "v_articles_etiquettes";
-  const endpoint = new URL(`/rest/v1/${encodeURIComponent(view)}`, supabaseUrl);
-  endpoint.searchParams.set(
-    "select",
-    "ref_ds,ref_fournisseur,type_code_barre,code_barre,famille,groupe,activite_ds,groupe_articles_code_barre,secteur,libelle,prix_pvp_htva,code_remise,ds_code_barre_id",
-  );
-  endpoint.searchParams.set("limit", "50000");
+async function lireRest<T>(table: string, select: string, limit = 50000): Promise<T[]> {
+  const { supabaseUrl, secretKey } = configurationSupabase();
+  const endpoint = new URL(`/rest/v1/${encodeURIComponent(table)}`, supabaseUrl);
+  endpoint.searchParams.set("select", select);
+  endpoint.searchParams.set("limit", String(limit));
 
   const response = await fetch(endpoint, {
     headers: {
@@ -107,13 +112,38 @@ async function chargerVue(): Promise<ArticleEtiquette[]> {
 
   if (!response.ok) {
     const details = await response.text();
-    console.error("Lecture vue étiquettes :", details);
-    throw new Error("Lecture de la vue v_articles_etiquettes impossible");
+    console.error(`Lecture Supabase ${table} :`, details);
+    throw new Error(`Lecture de ${table} impossible`);
   }
 
-  const data = (await response.json()) as VueArticle[];
+  return (await response.json()) as T[];
+}
+
+async function chargerVue(): Promise<ArticleEtiquette[]> {
+  if (cacheArticles && cacheArticles.expiresAt > Date.now()) return cacheArticles.rows;
+
+  const view = process.env.ARTICLES_VIEW || "v_articles_etiquettes";
+  const data = await lireRest<VueArticle>(
+    view,
+    "ref_ds,ref_fournisseur,type_code_barre,code_barre,famille,groupe,activite_ds,groupe_articles_code_barre,secteur,libelle,prix_pvp_htva,code_remise,ds_code_barre_id",
+  );
+
   const rows = data.map(mapper).filter((row) => row.refds || row.libelle);
-  cache = { expiresAt: Date.now() + CACHE_MS, rows };
+  cacheArticles = { expiresAt: Date.now() + CACHE_MS, rows };
+  return rows;
+}
+
+async function chargerCorrespondances(): Promise<CorrespondanceRow[]> {
+  if (cacheCorrespondances && cacheCorrespondances.expiresAt > Date.now()) {
+    return cacheCorrespondances.rows;
+  }
+
+  const rows = await lireRest<CorrespondanceRow>(
+    "correspondance",
+    "activite_ds,groupe_articles,secteur",
+    1000,
+  );
+  cacheCorrespondances = { expiresAt: Date.now() + CACHE_MS, rows };
   return rows;
 }
 
@@ -121,7 +151,7 @@ function valeursUniques(values: string[]): string[] {
   const map = new Map<string, string>();
   for (const value of values) {
     const propre = value.trim();
-    if (!propre) continue;
+    if (!propre || propre === "--") continue;
     const key = normaliser(propre);
     if (!map.has(key)) map.set(key, propre);
   }
@@ -134,16 +164,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const rows = await chargerVue();
     const action = request.nextUrl.searchParams.get("action") || "articles";
     const secteur = request.nextUrl.searchParams.get("secteur")?.trim() || "";
     const groupe = request.nextUrl.searchParams.get("groupe")?.trim() || "";
     const q = request.nextUrl.searchParams.get("q")?.trim() || "";
 
+    // Le premier menu doit provenir directement de la table Correspondance,
+    // et non de la vue articles. Il reste ainsi disponible même si aucun article
+    // n'est encore relié correctement à une correspondance.
     if (action === "secteurs") {
-      return NextResponse.json({ secteurs: valeursUniques(rows.map((row) => row.secteur)) });
+      const correspondances = await chargerCorrespondances();
+      return NextResponse.json({
+        secteurs: valeursUniques(correspondances.map((row) => texte(row.secteur))),
+      });
     }
 
+    const rows = await chargerVue();
     const lignesSecteur = secteur && secteur !== "Tous"
       ? rows.filter((row) => normaliser(row.secteur) === normaliser(secteur))
       : rows;
