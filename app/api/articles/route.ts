@@ -43,29 +43,17 @@ function typeCodeBarre(value: unknown, barcode: string): BarcodeType {
   return /^\d{13}$/.test(barcode) ? "EAN13" : "CODE128";
 }
 
-
 function config() {
-  const url =
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    throw new Error("Configuration Supabase incomplète");
-  }
-
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Configuration Supabase incomplète");
   return {
     url,
     key,
     famillesTable: process.env.FAMILLES_TABLE || "familles",
     articlesTable: process.env.ARTICLES_TABLE || "articles",
     codesTable: process.env.CODES_BARRES_TABLE || "ds_code_barre",
-    correspondanceTable:
-      process.env.CORRESPONDANCE_TABLE || "correspondance",
+    correspondanceTable: process.env.CORRESPONDANCE_TABLE || "correspondance",
   };
 }
 
@@ -98,7 +86,14 @@ async function lireTable(
 
 async function lireFamilles(params: Record<string, string>): Promise<JsonRow[]> {
   const { famillesTable } = config();
-  return lireTable(famillesTable, params);
+  try {
+    return await lireTable(famillesTable, params);
+  } catch (error) {
+    // Compatibilité avec les deux noms possibles de la table.
+    if (famillesTable === "famille") return lireTable("familles", params);
+    if (famillesTable === "familles") return lireTable("famille", params);
+    throw error;
+  }
 }
 
 function filtreEq(value: string): string {
@@ -115,8 +110,9 @@ async function secteurs(): Promise<string[]> {
     return cacheSecteurs.values;
   }
 
-  // Source unique du menu Secteur : familles.activite_ds.
-  // Aucune valeur n'est codée en dur.
+  // Le menu Secteur dépend uniquement de famille.activite_ds.
+  // Les valeurs vides sont ignorées et les doublons sont supprimés
+  // sans tenir compte de la casse ni des accents.
   const rows = await lireFamilles({
     select: "activite_ds",
     activite_ds: "not.is.null",
@@ -125,7 +121,9 @@ async function secteurs(): Promise<string[]> {
   });
 
   const values = valeursUniques(
-    rows.map((row) => texte(row.activite_ds)).filter(Boolean),
+    rows
+      .map((row) => texte(row.activite_ds))
+      .filter((value) => value && value !== "--"),
   );
 
   cacheSecteurs = { expiresAt: Date.now() + CACHE_MS, values };
