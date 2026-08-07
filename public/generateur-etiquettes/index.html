@@ -82,6 +82,7 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
       <h2 id="cartTitle">Panier d’étiquettes</h2>
       <span id="cartModalCount" class="muted"></span>
       <div class="spacer"></div>
+      <button class="btn outline" id="deleteCartSelectionBtn" disabled>Supprimer la sélection du panier</button>
       <button class="btn outline" id="closeCartBtn">Fermer</button>
     </div>
     <div class="cart-body" id="cartBody"></div>
@@ -94,6 +95,7 @@ let articles=[];
 const selected=new Set();
 const selectedArticles=new Map();
 const listSelection=new Set();
+const cartSelection=new Set();
 let timer=null;
 let restoreState=null;
 let sortKey='numero', sortDir='asc';
@@ -121,7 +123,38 @@ function majFiltresColonnes(){}
 function photoHtml(a){const nom=String(a.photo||'').trim();return nom?`<div class="photo-cell">${esc(nom)}</div>`:`<span class="photo-missing">Aucune</span>`}
 function ajouterAuPanier(article){if(!article)return;const ref=String(article.numero||'');if(!ref)return;if(selected.size>=500&&!selected.has(ref)){alert('La sélection est limitée à 500 articles maximum.');return}selected.add(ref);selectedArticles.set(ref,article);sauvegarderPanier();updateCount()}
 function retirerDuPanier(ref){ref=String(ref||'');selected.delete(ref);selectedArticles.delete(ref);sauvegarderPanier();updateCount();renderCart()}
-function renderCart(){const rows=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));cartModalCount.textContent=rows.length+' article'+(rows.length>1?'s':'');if(!rows.length){cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';return}cartBody.innerHTML=`<table class="cart-table"><thead><tr><th>Réf. DS</th><th>Activité</th><th>Groupe</th><th>Famille</th><th>Libellé</th></tr></thead><tbody>${rows.map(a=>`<tr><td class="ref">${esc(a.numero)}</td><td>${esc(a.activiteDs||a.secteur||'')}</td><td>${esc(a.groupe||'')}</td><td>${esc(a.famille||'')}</td><td>${esc(a.libelle||'')}</td></tr>`).join('')}</tbody></table>`;}
+function renderCart(){
+  const rows=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
+  for(const ref of [...cartSelection]){if(!selected.has(String(ref)))cartSelection.delete(String(ref))}
+  cartModalCount.textContent=rows.length+' article'+(rows.length>1?'s':'');
+  const deleteBtn=document.getElementById('deleteCartSelectionBtn');
+  if(deleteBtn){
+    deleteBtn.disabled=cartSelection.size===0;
+    deleteBtn.textContent=cartSelection.size?`Supprimer ${cartSelection.size} ligne${cartSelection.size>1?'s':''} du panier`:'Supprimer la sélection du panier';
+  }
+  if(!rows.length){
+    cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';
+    return;
+  }
+  const allChecked=rows.length>0&&rows.every(a=>cartSelection.has(String(a.numero)));
+  const someChecked=rows.some(a=>cartSelection.has(String(a.numero)));
+  cartBody.innerHTML=`<table class="cart-table"><thead><tr><th class="check-col"><input id="selectAllCartCheck" type="checkbox" aria-label="Sélectionner toutes les lignes du panier" title="Sélectionner ou désélectionner toutes les lignes du panier"></th><th>Réf. DS</th><th>Activité</th><th>Groupe</th><th>Famille</th><th>Libellé</th></tr></thead><tbody>${rows.map(a=>{const ref=String(a.numero);return `<tr class="${cartSelection.has(ref)?'selected':''}"><td class="check-col"><input class="cart-row-check" type="checkbox" data-ref="${esc(ref)}" ${cartSelection.has(ref)?'checked':''} aria-label="Sélectionner ${esc(ref)}"></td><td class="ref">${esc(a.numero)}</td><td>${esc(a.activiteDs||a.secteur||'')}</td><td>${esc(a.groupe||'')}</td><td>${esc(a.famille||'')}</td><td>${esc(a.libelle||'')}</td></tr>`}).join('')}</tbody></table>`;
+  const selectAllCart=document.getElementById('selectAllCartCheck');
+  if(selectAllCart){
+    selectAllCart.checked=allChecked;
+    selectAllCart.indeterminate=someChecked&&!allChecked;
+    selectAllCart.addEventListener('change',e=>{
+      if(e.target.checked)rows.forEach(a=>cartSelection.add(String(a.numero)));
+      else rows.forEach(a=>cartSelection.delete(String(a.numero)));
+      renderCart();
+    });
+  }
+  document.querySelectorAll('.cart-row-check').forEach(cb=>cb.addEventListener('change',e=>{
+    const ref=String(e.target.dataset.ref);
+    if(e.target.checked)cartSelection.add(ref);else cartSelection.delete(ref);
+    renderCart();
+  }));
+}
 function render(){majFiltresColonnes();const rows=articlesAffiches();articles.forEach(a=>{if(selected.has(String(a.numero)))selectedArticles.set(String(a.numero),a)});const visibles=new Set(rows.map(a=>String(a.numero)));for(const ref of [...listSelection]){if(!visibles.has(ref))listSelection.delete(ref)}const selectAll=document.getElementById('selectDisplayedCheck');if(selectAll){const nbSelectionnes=rows.reduce((n,a)=>n+(listSelection.has(String(a.numero))?1:0),0);selectAll.checked=rows.length>0&&nbSelectionnes===rows.length;selectAll.indeterminate=nbSelectionnes>0&&nbSelectionnes<rows.length;selectAll.disabled=rows.length===0}articlesBody.innerHTML=rows.map((a,i)=>{const ref=String(a.numero);const checked=listSelection.has(ref);const inCart=selected.has(ref);return `<tr data-i="${i}" class="${checked?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(ref)}" ${checked?'checked':''} title="Sélectionner cette ligne"></td><td class="ref">${esc(a.numero)}${inCart?' <span class="muted" title="Déjà dans le panier">✓ panier</span>':''}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td><td>${photoHtml(a)}</td></tr>`}).join('');document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=String(e.target.dataset.ref);if(e.target.checked)listSelection.add(ref);else listSelection.delete(ref);render()}));rows.forEach((a,i)=>{if(!a.barcode)return;try{const val=a.barcodeType==='EAN13'&&/^\d{13}$/.test(a.barcode)?a.barcode.slice(0,12):a.barcode;JsBarcode('#bc-'+i,val,{format:a.barcodeType||'CODE128',displayValue:false,height:30,width:1,margin:2})}catch{}});document.querySelectorAll('th[data-sort]').forEach(th=>{th.querySelector('.sort-mark')?.remove();if(th.dataset.sort===sortKey)th.insertAdjacentHTML('beforeend',`<span class="sort-mark">${sortDir==='asc'?'▲':'▼'}</span>`)});updateCount()}
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
 document.getElementById('selectDisplayedCheck').addEventListener('change',e=>{const rows=articlesAffiches();if(e.target.checked){rows.forEach(a=>listSelection.add(String(a.numero)))}else{rows.forEach(a=>listSelection.delete(String(a.numero)))}render()});
@@ -135,7 +168,8 @@ articleSearch.addEventListener('input',()=>{currentPage=1;enregistrerEtat();clea
 articleSearch.addEventListener('keydown',(event)=>{if(event.key!=='Enter')return;event.preventDefault();clearTimeout(timer);const terme=articleSearch.value.trim();if(terme.length>0&&terme.length<3){afficherEtat('Saisissez au moins 3 caractères pour lancer la recherche.',2500);return}currentPage=1;loadArticles()});
 selectPageBtn.addEventListener('click',()=>{if(!listSelection.size){afficherEtat('Cochez d’abord une ou plusieurs lignes dans la liste.',2500);return}let ajoutes=0;for(const ref of [...listSelection]){const a=articles.find(x=>String(x.numero)===String(ref));if(!a)continue;if(selected.has(String(ref)))continue;if(selected.size>=500)break;selected.add(String(ref));selectedArticles.set(String(ref),a);ajoutes++}sauvegarderPanier();listSelection.clear();render();renderCart();afficherEtat(ajoutes?ajoutes+' article(s) ajouté(s) au panier.':'Les articles sélectionnés sont déjà dans le panier.',2500)});
 clearDisplayedBtn.addEventListener('click',()=>{clearTimeout(timer);if(apiController)apiController.abort();filterSecteur.value='Tous';filterGroupe.value='Tous';articleSearch.value='';listSelection.clear();articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();enregistrerEtat();effacerEtat()});
-clearSelectionBtn.addEventListener('click',()=>{if(!selected.size)return;if(!confirm('Vider tout le panier d’étiquettes ?'))return;selected.clear();selectedArticles.clear();sauvegarderPanier();render();renderCart()});
+clearSelectionBtn.addEventListener('click',()=>{if(!selected.size)return;if(!confirm('Vider tout le panier d’étiquettes ?'))return;selected.clear();selectedArticles.clear();cartSelection.clear();sauvegarderPanier();render();renderCart()});
+document.getElementById('deleteCartSelectionBtn').addEventListener('click',()=>{if(!cartSelection.size)return;const n=cartSelection.size;if(!confirm(`Supprimer ${n} ligne${n>1?'s':''} du panier ?`))return;for(const ref of [...cartSelection]){selected.delete(String(ref));selectedArticles.delete(String(ref))}cartSelection.clear();sauvegarderPanier();render();renderCart();afficherEtat(n+' article'+(n>1?'s':'')+' supprimé'+(n>1?'s':'')+' du panier.',2500)});
 viewSelectionBtn.addEventListener('click',()=>{renderCart();cartModal.classList.add('open');cartModal.setAttribute('aria-hidden','false')});
 closeCartBtn.addEventListener('click',()=>{cartModal.classList.remove('open');cartModal.setAttribute('aria-hidden','true')});
 cartModal.addEventListener('click',e=>{if(e.target===cartModal)closeCartBtn.click()});
