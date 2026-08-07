@@ -47,7 +47,7 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
         <button class="btn outline" id="lastPageBtn" title="Dernière page">Dernière »</button>
       </div>
     </div>
-    <div class="status" id="status">Chargement des activités…</div>
+    <div class="status" id="status"></div>
   </section>
 
   <section class="table-wrap">
@@ -76,6 +76,19 @@ let currentPage=1, totalPages=1, totalArticles=0;
 
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+let statusTimer=null;
+function afficherEtat(message,duree=0){
+  clearTimeout(statusTimer);
+  status.textContent=message||'';
+  if(message&&duree>0){
+    statusTimer=setTimeout(()=>{status.textContent='';},duree);
+  }
+}
+function effacerEtat(){
+  clearTimeout(statusTimer);
+  status.textContent='';
+}
+
 function lireEtat(){
   try{return JSON.parse(sessionStorage.getItem(STATE_KEY)||'{}')||{}}catch{return {}}
 }
@@ -120,9 +133,35 @@ async function api(params){
   }
 }
 function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
-async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadGroupes(restoring=false){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
+async function loadActivites(){try{effacerEtat();const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){afficherEtat('Erreur : '+e.message)}}
+async function loadGroupes(restoring=false){try{effacerEtat();const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){afficherEtat('Erreur : '+e.message)}}
+async function loadArticles(){
+  try{
+    const terme=articleSearch.value.trim();
+    afficherEtat(terme ? 'Recherche en cours…' : 'Chargement en cours…');
+    const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};
+    if(terme) params.q=terme;
+    const p=await api(params);
+    articles=Array.isArray(p.articles)?p.articles:[];
+    totalArticles=Number(p.total||0);
+    totalPages=Math.max(1,Number(p.totalPages||1));
+    currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);
+    render();
+    majPagination();
+    enregistrerEtat();
+    if(totalArticles===0){
+      afficherEtat('Pas de résultats');
+    }else{
+      effacerEtat();
+    }
+  }catch(e){
+    if(e?.name==='AbortError') return;
+    articles=[];totalArticles=0;totalPages=1;currentPage=1;
+    render();majPagination();
+    afficherEtat('Erreur : '+e.message);
+  }
+}
+
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){
@@ -189,7 +228,7 @@ articleSearch.addEventListener('input',()=>{
   clearTimeout(timer);
   const terme=articleSearch.value.trim();
   if(terme.length>0 && terme.length<3){
-    status.textContent='Saisissez au moins 3 caractères pour lancer la recherche.';
+    afficherEtat('Saisissez au moins 3 caractères pour lancer la recherche.',2500);
     return;
   }
   timer=setTimeout(loadArticles,500);
@@ -200,7 +239,7 @@ articleSearch.addEventListener('keydown',(event)=>{
   clearTimeout(timer);
   const terme=articleSearch.value.trim();
   if(terme.length>0 && terme.length<3){
-    status.textContent='Saisissez au moins 3 caractères pour lancer la recherche.';
+    afficherEtat('Saisissez au moins 3 caractères pour lancer la recherche.',2500);
     return;
   }
   currentPage=1;
