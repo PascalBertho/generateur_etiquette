@@ -84,11 +84,14 @@ function lireContexteAccueil(){
         numero:String(a.numero||''), famille:String(a.famille||''), libelle:String(a.libelle||''),
         groupe:String(a.groupe||''), secteur:String(a.secteur||''), photo:String(a.photo||'')
       })).filter(a=>a.numero);
+      selected.clear();
+      articlesSource.forEach(a=>selected.add(String(a.numero)));
+      enregistrerSelectionAccueil();
       const morceaux=[];
       if(contexte.activiteDs) morceaux.push('Activité DS : '+contexte.activiteDs);
       if(contexte.groupe) morceaux.push('Groupe : '+contexte.groupe);
       if(contexte.recherche) morceaux.push('Recherche : '+contexte.recherche);
-      $('contextInfo').textContent='Articles sélectionnés dans la page principale'+(morceaux.length?' — '+morceaux.join(' | '):'')+'.';
+      $('contextInfo').textContent=articlesSource.length+' article(s) sélectionné(s) dans la page principale'+(morceaux.length?' — '+morceaux.join(' | '):'')+'.';
       return true;
     }
   }catch(e){}

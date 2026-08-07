@@ -34,8 +34,10 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
       <button class="btn accent" id="previewBtn">Ouvrir l'aperçu des étiquettes</button>
     </div>
     <div class="summary">
-      <label><input type="checkbox" id="selectAll"> <strong>Page actuelle</strong></label>
+      <button class="btn outline" id="selectPageBtn">Sélectionner les 500 affichés</button>
       <button class="btn outline" id="selectAllFilteredBtn">Sélectionner tous les résultats filtrés</button>
+      <span><strong id="filteredCount">0</strong> article(s) dans la liste</span>
+      <span><strong id="displayedCount">0</strong> affiché(s)</span>
       <span id="selectionCount">0 article sélectionné</span>
       <button class="btn outline" id="clearSelectionBtn">Vider la sélection</button>
       <div class="pagination">
@@ -155,7 +157,13 @@ function render(){
   updateCount();
 }
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
-function updateCount(){selectionCount.textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');selectAll.checked=articles.length>0&&articles.every(a=>selected.has(a.numero));selectAll.indeterminate=articles.some(a=>selected.has(a.numero))&&!selectAll.checked}
+function updateCount(){
+  selectionCount.textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');
+  filteredCount.textContent=totalArticles.toLocaleString('fr-BE');
+  displayedCount.textContent=articles.length.toLocaleString('fr-BE');
+  selectPageBtn.textContent=`Sélectionner les ${articles.length} affichés`;
+  selectAllFilteredBtn.textContent=`Sélectionner les ${totalArticles.toLocaleString('fr-BE')} résultats filtrés`;
+}
 function majPagination(){
   const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;
   const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;
@@ -190,7 +198,12 @@ articleSearch.addEventListener('keydown',(event)=>{
   currentPage=1;
   loadArticles();
 });
-selectAll.addEventListener('change',()=>{selectionGlobaleFiltree=false;if(selectAll.checked)articles.forEach(a=>{selected.add(a.numero);selectedArticles.set(a.numero,a)});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
+selectPageBtn.addEventListener('click',()=>{
+  selectionGlobaleFiltree=false;
+  articles.forEach(a=>{selected.add(String(a.numero));selectedArticles.set(String(a.numero),a)});
+  enregistrerEtat();
+  render();
+});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
 selectAllFilteredBtn.addEventListener('click',async()=>{
   const terme=articleSearch.value.trim();
   if(terme.length>0 && terme.length<3){alert('Saisissez au moins 3 caractères pour utiliser la recherche.');return;}
@@ -235,6 +248,12 @@ async function completerArticlesSelectionnes(){
 
 photoBtn.addEventListener('click',async()=>{
   articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});
+  if(!selected.size){
+    alert('Sélectionnez au moins un article avant d’ouvrir la page Photo.');
+    return;
+  }
+  status.textContent=`Préparation de ${selected.size} article(s) pour la page Photo…`;
+  await completerArticlesSelectionnes();
   const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
   if(!lignesSelectionnees.length){
     alert('Sélectionnez au moins un article avant d’ouvrir la page Photo.');
