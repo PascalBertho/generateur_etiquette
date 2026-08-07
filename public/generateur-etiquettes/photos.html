@@ -27,6 +27,7 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
     <button class="btn outline danger" id="clearBtn">Vider la sélection</button>
   </div>
   <div class="summary"><label><input type="checkbox" id="selectAll"> <strong>Tous les articles affichés</strong></label><span id="selectionCount">0 article sélectionné</span></div>
+  <div class="status" id="contextInfo"></div>
   <div class="status" id="status">Chargement des articles…</div>
 </section>
 
@@ -56,18 +57,55 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
 </div>
 </main>
 <script>
-let articles=[];const selected=new Set();let timer=null;let pngBlob=null;let objectUrl=null;
+let articles=[];let articlesSource=[];const selected=new Set();let timer=null;let pngBlob=null;let objectUrl=null;
 const $=id=>document.getElementById(id);
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function normaliser(s){return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
+function lireContexteAccueil(){
+  try{
+    const liste=JSON.parse(sessionStorage.getItem('photos_articles_liste')||'[]');
+    const contexte=JSON.parse(sessionStorage.getItem('photos_articles_contexte')||'{}');
+    if(Array.isArray(liste) && liste.length){
+      articlesSource=liste.map(a=>({
+        numero:String(a.numero||''), famille:String(a.famille||''), libelle:String(a.libelle||''),
+        groupe:String(a.groupe||''), secteur:String(a.secteur||''), photo:String(a.photo||'')
+      })).filter(a=>a.numero);
+      const morceaux=[];
+      if(contexte.activiteDs) morceaux.push('Activité DS : '+contexte.activiteDs);
+      if(contexte.groupe) morceaux.push('Groupe : '+contexte.groupe);
+      if(contexte.recherche) morceaux.push('Recherche : '+contexte.recherche);
+      $('contextInfo').textContent='Liste reprise de la page principale'+(morceaux.length?' — '+morceaux.join(' | '):'')+'.';
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
 async function apiList(){const q=new URLSearchParams();if($('search').value.trim())q.set('q',$('search').value.trim());const r=await fetch('/api/articles/photos?'+q,{credentials:'same-origin',cache:'no-store'});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';throw new Error('Session expirée')}if(!r.ok)throw new Error(p.error||'Erreur API');return p}
-async function load(){try{$('status').className='status';$('status').textContent='Chargement des articles…';const p=await apiList();articles=Array.isArray(p.articles)?p.articles:[];render();$('status').textContent=articles.length+' article(s) affiché(s).'}catch(e){articles=[];render();$('status').className='status error';$('status').textContent='Erreur : '+e.message}}
+function appliquerRecherche(){
+  const q=normaliser($('search').value);
+  articles=!q?articlesSource.slice():articlesSource.filter(a=>normaliser(a.numero+' '+a.famille+' '+a.libelle+' '+a.groupe+' '+a.secteur).includes(q));
+  render();
+  $('status').className='status';
+  $('status').textContent=articles.length+' article(s) affiché(s) sur '+articlesSource.length+'.';
+}
+async function load(){
+  try{
+    $('status').className='status';$('status').textContent='Chargement des articles…';
+    if(lireContexteAccueil()){
+      appliquerRecherche();
+      return;
+    }
+    $('contextInfo').textContent="Aucun contexte reçu de la page principale : affichage de la liste générale.";
+    const p=await apiList();articlesSource=Array.isArray(p.articles)?p.articles:[];appliquerRecherche();
+  }catch(e){articles=[];articlesSource=[];render();$('status').className='status error';$('status').textContent='Erreur : '+e.message}
+}
 function render(){$('body').innerHTML=articles.map(a=>`<tr class="${selected.has(a.numero)?'selected':''}"><td class="check"><input class="row-check" type="checkbox" data-ref="${esc(a.numero)}" ${selected.has(a.numero)?'checked':''}></td><td class="ref">${esc(a.numero)}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td class="photo-state">${a.photo?`<span class="has-photo">✓ ${esc(a.photo)}</span>`:'<span class="no-photo">Aucune</span>'}</td></tr>`).join('');document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=e.target.dataset.ref;e.target.checked?selected.add(ref):selected.delete(ref);render();updateCount()}));updateCount()}
 function updateCount(){$('selectionCount').textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');$('selectAll').checked=articles.length>0&&articles.every(a=>selected.has(a.numero));$('selectAll').indeterminate=articles.some(a=>selected.has(a.numero))&&!$('selectAll').checked}
 async function convertirEnPng(file){const bitmap=await createImageBitmap(file);const max=1600;let w=bitmap.width,h=bitmap.height;if(w>max||h>max){const ratio=Math.min(max/w,max/h);w=Math.round(w*ratio);h=Math.round(h*ratio)}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);bitmap.close();return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Conversion PNG impossible')),'image/png'))}
 async function setImage(file){try{pngBlob=await convertirEnPng(file);if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(pngBlob);$('preview').src=objectUrl;$('preview').style.display='block';$('placeholder').style.display='none';$('filename').textContent=file.name+' → PNG ('+Math.round(pngBlob.size/1024)+' Ko)';$('progress').textContent=''}catch(e){alert(e.message)}}
 function clearImage(){pngBlob=null;if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null}$('preview').src='';$('preview').style.display='none';$('placeholder').style.display='block';$('filename').textContent='';$('fileInput').value='';$('progress').textContent=''}
-async function upload(){if(!selected.size){alert('Sélectionnez au moins un article.');return}if(!pngBlob){alert('Glissez ou choisissez d’abord une photo.');return}const refs=[...selected];const form=new FormData();form.append('photo',pngBlob,'photo.png');form.append('refs',JSON.stringify(refs));$('uploadBtn').disabled=true;$('progress').textContent='Enregistrement de la photo pour '+refs.length+' article(s)…';try{const r=await fetch('/api/articles/photos',{method:'POST',credentials:'same-origin',body:form});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';return}if(!r.ok&&r.status!==207)throw new Error(p.error||'Erreur pendant l’enregistrement');const ok=Array.isArray(p.succes)?p.succes.length:0;const ko=Array.isArray(p.erreurs)?p.erreurs.length:0;$('progress').innerHTML='<strong>'+ok+' photo(s) enregistrée(s).</strong>'+(ko?' '+ko+' erreur(s).':'');$('status').className='status ok';$('status').textContent='Mise à jour terminée.';await load()}catch(e){$('progress').textContent='Erreur : '+e.message;$('status').className='status error';$('status').textContent='Erreur pendant l’enregistrement.'}finally{$('uploadBtn').disabled=false}}
-$('selectAll').addEventListener('change',()=>{if($('selectAll').checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));render()});$('clearBtn').addEventListener('click',()=>{selected.clear();render()});$('refreshBtn').addEventListener('click',load);$('search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(load,300)});$('backBtn').addEventListener('click',()=>location.href='/generateur-etiquettes/');
+async function upload(){if(!selected.size){alert('Sélectionnez au moins un article.');return}if(!pngBlob){alert('Glissez ou choisissez d’abord une photo.');return}const refs=[...selected];const form=new FormData();form.append('photo',pngBlob,'photo.png');form.append('refs',JSON.stringify(refs));$('uploadBtn').disabled=true;$('progress').textContent='Enregistrement de la photo pour '+refs.length+' article(s)…';try{const r=await fetch('/api/articles/photos',{method:'POST',credentials:'same-origin',body:form});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';return}if(!r.ok&&r.status!==207)throw new Error(p.error||'Erreur pendant l’enregistrement');const succes=Array.isArray(p.succes)?p.succes:[];const ko=Array.isArray(p.erreurs)?p.erreurs.length:0;const noms=new Map(succes.map(x=>[String(x.ref),String(x.photo||'')]));articlesSource=articlesSource.map(a=>noms.has(a.numero)?{...a,photo:noms.get(a.numero)}:a);sessionStorage.setItem('photos_articles_liste',JSON.stringify(articlesSource));appliquerRecherche();$('progress').innerHTML='<strong>'+succes.length+' photo(s) enregistrée(s).</strong>'+(ko?' '+ko+' erreur(s).':'');$('status').className='status ok';$('status').textContent='Mise à jour terminée.'}catch(e){$('progress').textContent='Erreur : '+e.message;$('status').className='status error';$('status').textContent='Erreur pendant l’enregistrement.'}finally{$('uploadBtn').disabled=false}}
+$('selectAll').addEventListener('change',()=>{if($('selectAll').checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));render()});$('clearBtn').addEventListener('click',()=>{selected.clear();render()});$('refreshBtn').addEventListener('click',load);$('search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(appliquerRecherche,200)});$('backBtn').addEventListener('click',()=>location.href='/generateur-etiquettes/');
 $('dropzone').addEventListener('click',()=>$('fileInput').click());$('fileInput').addEventListener('change',e=>{if(e.target.files[0])setImage(e.target.files[0])});$('dropzone').addEventListener('dragover',e=>{e.preventDefault();$('dropzone').classList.add('drag')});$('dropzone').addEventListener('dragleave',()=>$('dropzone').classList.remove('drag'));$('dropzone').addEventListener('drop',e=>{e.preventDefault();$('dropzone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setImage(f)});$('removeImageBtn').addEventListener('click',clearImage);$('uploadBtn').addEventListener('click',upload);load();
 </script>
 </body>

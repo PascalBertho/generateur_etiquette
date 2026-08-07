@@ -67,7 +67,15 @@ function render(){articlesBody.innerHTML=articles.map((a,i)=>`<tr data-i="${i}" 
 function updateCount(){selectionCount.textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');selectAll.checked=articles.length>0&&articles.every(a=>selected.has(a.numero));selectAll.indeterminate=articles.some(a=>selected.has(a.numero))&&!selectAll.checked}
 filterSecteur.addEventListener('change',loadGroupes);filterGroupe.addEventListener('change',loadArticles);refreshBtn.addEventListener('click',loadArticles);articleSearch.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(loadArticles,300)});
 selectAll.addEventListener('change',()=>{if(selectAll.checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));render()});clearSelectionBtn.addEventListener('click',()=>{selected.clear();render()});
-photoBtn.addEventListener('click',()=>{location.href='/generateur-etiquettes/photos.html'});
+photoBtn.addEventListener('click',()=>{
+  sessionStorage.setItem('photos_articles_liste', JSON.stringify(articles));
+  sessionStorage.setItem('photos_articles_contexte', JSON.stringify({
+    activiteDs: filterSecteur.value,
+    groupe: filterGroupe.value,
+    recherche: articleSearch.value.trim()
+  }));
+  location.href='/generateur-etiquettes/photos.html';
+});
 previewBtn.addEventListener('click',()=>{const rows=articles.filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
 logoutBtn.addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'})}catch{}location.href='/login'});
 loadActivites();
