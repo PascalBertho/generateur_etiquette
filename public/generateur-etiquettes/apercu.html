@@ -203,7 +203,7 @@ function esc(value){
 }
 function normaliserArticle(a){
   return {
-    photo:a.photo || '',
+    photo:a.photo || a.articles_photo || '',
     barcode:a.barcode || a.codeBarre || '',
     barcodeType:a.barcodeType || a.typeCodeBarre || (/^\d{13}$/.test(String(a.barcode||''))?'EAN13':'CODE128'),
     refds:a.refds || a.numero || a.dsReference || '',
@@ -227,6 +227,22 @@ function formatPrix(v){
   const n=Number(String(v).replace(',','.'));
   return Number.isFinite(n) ? n.toFixed(2).replace('.',',')+' €' : esc(v)+' €';
 }
+function photoUrl(l){
+  const photo=String(l.photo || '').trim();
+  if(!photo) return '';
+
+  // Les photos choisies manuellement dans l'ancien générateur sont déjà
+  // des data: URL. Une URL http(s)/blob peut également être utilisée telle quelle.
+  if(/^(data:|blob:|https?:\/\/)/i.test(photo)) return photo;
+
+  // Dans l'application Supabase, `photo` contient le nom du fichier du bucket
+  // (ex. FU01150.png). Le bucket est privé : on passe par la route serveur
+  // authentifiée qui retrouve l'image grâce à la référence DS.
+  const ref=String(l.refds || '').trim();
+  if(ref) return '/api/articles/photos?ref=' + encodeURIComponent(ref);
+
+  return '';
+}
 function buildLabelEl(raw){
   const l=normaliserArticle(raw);
   const el=document.createElement('div');
@@ -234,7 +250,7 @@ function buildLabelEl(raw){
   const priceColor=SECTEUR_COLORS[l.secteur] || '#e8722a';
   el.innerHTML=`
     <div class="col-photo">
-      ${l.photo?`<img src="${esc(l.photo)}" alt="">`:`<div class="ph-empty">Pas de photo</div>`}
+      ${photoUrl(l)?`<img src="${esc(photoUrl(l))}" alt="Photo ${esc(l.refds)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="ph-empty" style="display:none">Photo indisponible</div>`:`<div class="ph-empty">Pas de photo</div>`}
     </div>
     <div class="col-code">
       <div class="barcode-box">
