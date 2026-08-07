@@ -42,7 +42,7 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
   <aside class="drop-card">
     <h2 style="font-size:15px;margin:0 0 8px">Photo à attribuer</h2>
     <div class="dropzone" id="dropzone">
-      <div id="placeholder" class="drop-help"><strong>Glissez une photo ici</strong><br>ou cliquez pour choisir un fichier.<br><br>L'image sera automatiquement convertie en PNG.</div>
+      <div id="placeholder" class="drop-help"><strong>Glissez une photo ici</strong><br>ou cliquez pour choisir un fichier,<br>ou copiez une image puis faites <strong>Ctrl+V</strong>.<br><br>L'image sera automatiquement convertie en PNG.</div>
       <img id="preview" alt="Aperçu" style="display:none">
     </div>
     <input type="file" id="fileInput" accept="image/*" hidden>
@@ -106,7 +106,22 @@ async function setImage(file){try{pngBlob=await convertirEnPng(file);if(objectUr
 function clearImage(){pngBlob=null;if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null}$('preview').src='';$('preview').style.display='none';$('placeholder').style.display='block';$('filename').textContent='';$('fileInput').value='';$('progress').textContent=''}
 async function upload(){if(!selected.size){alert('Sélectionnez au moins un article.');return}if(!pngBlob){alert('Glissez ou choisissez d’abord une photo.');return}const refs=[...selected];const form=new FormData();form.append('photo',pngBlob,'photo.png');form.append('refs',JSON.stringify(refs));$('uploadBtn').disabled=true;$('progress').textContent='Enregistrement de la photo pour '+refs.length+' article(s)…';try{const r=await fetch('/api/articles/photos',{method:'POST',credentials:'same-origin',body:form});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';return}if(!r.ok&&r.status!==207)throw new Error(p.error||'Erreur pendant l’enregistrement');const succes=Array.isArray(p.succes)?p.succes:[];const ko=Array.isArray(p.erreurs)?p.erreurs.length:0;const noms=new Map(succes.map(x=>[String(x.ref),String(x.photo||'')]));articlesSource=articlesSource.map(a=>noms.has(a.numero)?{...a,photo:noms.get(a.numero)}:a);sessionStorage.setItem('photos_articles_liste',JSON.stringify(articlesSource));appliquerRecherche();$('progress').innerHTML='<strong>'+succes.length+' photo(s) enregistrée(s).</strong>'+(ko?' '+ko+' erreur(s).':'');$('status').className='status ok';$('status').textContent='Mise à jour terminée.'}catch(e){$('progress').textContent='Erreur : '+e.message;$('status').className='status error';$('status').textContent='Erreur pendant l’enregistrement.'}finally{$('uploadBtn').disabled=false}}
 $('selectAll').addEventListener('change',()=>{if($('selectAll').checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));render()});$('clearBtn').addEventListener('click',()=>{selected.clear();render()});$('refreshBtn').addEventListener('click',load);$('search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(appliquerRecherche,200)});$('backBtn').addEventListener('click',()=>location.href='/generateur-etiquettes/');
-$('dropzone').addEventListener('click',()=>$('fileInput').click());$('fileInput').addEventListener('change',e=>{if(e.target.files[0])setImage(e.target.files[0])});$('dropzone').addEventListener('dragover',e=>{e.preventDefault();$('dropzone').classList.add('drag')});$('dropzone').addEventListener('dragleave',()=>$('dropzone').classList.remove('drag'));$('dropzone').addEventListener('drop',e=>{e.preventDefault();$('dropzone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setImage(f)});$('removeImageBtn').addEventListener('click',clearImage);$('uploadBtn').addEventListener('click',upload);load();
+$('dropzone').addEventListener('click',()=>$('fileInput').click());$('fileInput').addEventListener('change',e=>{if(e.target.files[0])setImage(e.target.files[0])});$('dropzone').addEventListener('dragover',e=>{e.preventDefault();$('dropzone').classList.add('drag')});$('dropzone').addEventListener('dragleave',()=>$('dropzone').classList.remove('drag'));$('dropzone').addEventListener('drop',e=>{e.preventDefault();$('dropzone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setImage(f)});
+
+// Coller une image directement depuis le presse-papiers avec Ctrl+V / Cmd+V.
+document.addEventListener('paste',e=>{
+  const items=[...(e.clipboardData?.items||[])];
+  const imageItem=items.find(item=>item.type && item.type.startsWith('image/'));
+  if(!imageItem) return;
+  const file=imageItem.getAsFile();
+  if(!file) return;
+  e.preventDefault();
+  $('dropzone').classList.add('drag');
+  setTimeout(()=>$('dropzone').classList.remove('drag'),300);
+  setImage(file);
+});
+
+$('removeImageBtn').addEventListener('click',clearImage);$('uploadBtn').addEventListener('click',upload);load();
 </script>
 </body>
 </html>
