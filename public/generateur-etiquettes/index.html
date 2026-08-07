@@ -13,7 +13,7 @@ button,select,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14p
 main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(260px,1.4fr) auto auto auto;gap:12px;align-items:end}.field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:5px}.field select,.field input{width:100%;height:39px;border:1px solid #9fb0bd;border-radius:7px;padding:0 10px;background:#fff;color:var(--ink)}
 .status{margin-top:10px;font-size:12px;color:var(--soft)}.summary{margin-top:10px;display:flex;align-items:center;gap:12px;font-size:13px}.summary strong{color:var(--accent)}
-.table-wrap{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 230px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:1500px}thead th{position:sticky;top:0;z-index:3;background:#eaf0f4;color:#405565;text-align:left;padding:9px 8px;border-bottom:1px solid #b9c6cf;white-space:nowrap;cursor:pointer}.filter-row th{top:34px;z-index:2;padding:4px 5px;background:#f7fafc;cursor:default}.filter-row select{width:100%;min-width:90px;height:28px;border:1px solid #b8c6d0;border-radius:5px;background:#fff;font-size:11px;color:#405565}.sort-mark{font-size:10px;margin-left:4px;color:var(--accent)}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:middle}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check-col{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.price{text-align:right;white-space:nowrap}.barcode-text{font-family:Consolas,monospace;white-space:nowrap}.barcode-preview svg{max-width:150px;height:42px}.photo-cell{min-width:125px;white-space:nowrap;font-family:Consolas,monospace;font-size:11px}.photo-missing{font-family:inherit;font-size:11px;color:#8998a5}.muted{color:#8998a5}
+.table-wrap{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 230px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:1500px}thead th{position:sticky;top:0;z-index:3;background:#eaf0f4;color:#405565;text-align:left;padding:9px 8px;border-bottom:1px solid #b9c6cf;white-space:nowrap;cursor:pointer}.sort-mark{font-size:10px;margin-left:4px;color:var(--accent)}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:middle}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check-col{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.price{text-align:right;white-space:nowrap}.barcode-text{font-family:Consolas,monospace;white-space:nowrap}.barcode-preview svg{max-width:150px;height:42px}.photo-cell{min-width:125px;white-space:nowrap;font-family:Consolas,monospace;font-size:11px}.photo-missing{font-family:inherit;font-size:11px;color:#8998a5}.muted{color:#8998a5}
 @media(max-width:1000px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}}
 </style>
 </head>
@@ -48,9 +48,6 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
         <th class="check-col"></th>
         <th data-sort="numero">Référence DS</th><th data-sort="refFournisseur">Référence fournisseur</th><th data-sort="groupe">Groupe</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="secteur">Secteur</th><th data-sort="prix">Prix</th><th data-sort="barcode">Code à barre</th><th>Aperçu code barre</th><th data-sort="photo">Photo actuelle</th>
       </tr>
-      <tr class="filter-row">
-        <th></th><th><select data-filter="numero"></select></th><th><select data-filter="refFournisseur"></select></th><th><select data-filter="groupe"></select></th><th><select data-filter="famille"></select></th><th><select data-filter="libelle"></select></th><th><select data-filter="secteur"></select></th><th><select data-filter="prix"></select></th><th><select data-filter="barcode"></select></th><th></th><th><select data-filter="photo"></select></th>
-      </tr>
       </thead>
       <tbody id="articlesBody"></tbody>
     </table>
@@ -63,7 +60,7 @@ const selected=new Set();
 let timer=null;
 let restoreState=null;
 let sortKey='numero', sortDir='asc';
-const columnFilters={};
+
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function lireEtat(){
@@ -91,7 +88,7 @@ async function loadArticles(){try{status.textContent='Chargement des articles…
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){
-  let rows=articles.filter(a=>Object.entries(columnFilters).every(([k,v])=>!v||valeurColonne(a,k)===v));
+  let rows=articles.slice();
   rows=rows.slice().sort((a,b)=>{
     let av=valeurColonne(a,sortKey), bv=valeurColonne(b,sortKey);
     if(sortKey==='prix'){av=parseFloat(av.replace(',','.'))||0;bv=parseFloat(bv.replace(',','.'))||0;return (av-bv)*(sortDir==='asc'?1:-1)}
@@ -100,12 +97,6 @@ function articlesAffiches(){
   return rows;
 }
 function majFiltresColonnes(){
-  document.querySelectorAll('[data-filter]').forEach(sel=>{
-    const key=sel.dataset.filter, current=columnFilters[key]||'';
-    const values=[...new Set(articles.map(a=>valeurColonne(a,key)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true,sensitivity:'base'}));
-    sel.innerHTML='<option value="">Tous</option>'+values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    if(values.includes(current)) sel.value=current; else {sel.value='';delete columnFilters[key]}
-  });
 }
 function photoHtml(a){
   const nom=String(a.photo || '').trim();
@@ -123,7 +114,6 @@ function render(){
   updateCount();
 }
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
-document.querySelectorAll('[data-filter]').forEach(sel=>sel.addEventListener('change',()=>{const k=sel.dataset.filter;if(sel.value)columnFilters[k]=sel.value;else delete columnFilters[k];render()}));
 function updateCount(){selectionCount.textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');selectAll.checked=articles.length>0&&articles.every(a=>selected.has(a.numero));selectAll.indeterminate=articles.some(a=>selected.has(a.numero))&&!selectAll.checked}
 filterSecteur.addEventListener('change',()=>{filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
 filterGroupe.addEventListener('change',()=>{enregistrerEtat();loadArticles()});

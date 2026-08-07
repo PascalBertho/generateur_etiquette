@@ -12,7 +12,7 @@ button,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14px;font-
 main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .toolbar-grid{display:grid;grid-template-columns:minmax(260px,1fr) auto auto;gap:10px;align-items:end}.field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:5px}.field input{width:100%;height:39px;border:1px solid #9fb0bd;border-radius:7px;padding:0 10px;background:#fff}
 .summary{margin-top:10px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px}.summary strong{color:var(--accent)}.status{font-size:12px;color:var(--soft);margin-top:8px}.status.error{color:var(--danger)}.status.ok{color:var(--ok)}
-.content{display:grid;grid-template-columns:minmax(620px,1.5fr) minmax(330px,.65fr);gap:16px;margin-top:16px}.table-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 210px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}thead th{position:sticky;top:0;z-index:3;background:#eaf0f4;padding:9px 8px;text-align:left;border-bottom:1px solid #b9c6cf;cursor:pointer}.filter-row th{top:34px;z-index:2;padding:4px 5px;background:#f7fafc;cursor:default}.filter-row select{width:100%;height:28px;border:1px solid #b8c6d0;border-radius:5px;background:#fff;font-size:11px}.sort-mark{font-size:10px;margin-left:4px;color:var(--accent)}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.photo-state{font-size:11px;min-width:130px;white-space:nowrap}.photo-current{font-family:Consolas,monospace}.has-photo{color:var(--ok);font-weight:650}.no-photo{color:#8c99a4;font-family:inherit}
+.content{display:grid;grid-template-columns:minmax(620px,1.5fr) minmax(330px,.65fr);gap:16px;margin-top:16px}.table-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 210px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}thead th{position:sticky;top:0;z-index:3;background:#eaf0f4;padding:9px 8px;text-align:left;border-bottom:1px solid #b9c6cf;cursor:pointer}.sort-mark{font-size:10px;margin-left:4px;color:var(--accent)}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.photo-state{font-size:11px;min-width:130px;white-space:nowrap}.photo-current{font-family:Consolas,monospace}.has-photo{color:var(--ok);font-weight:650}.no-photo{color:#8c99a4;font-family:inherit}
 .drop-card{position:sticky;top:18px;height:max-content}.dropzone{margin-top:8px;border:2px dashed #91a7b6;border-radius:10px;min-height:240px;display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;background:#f8fbfd;cursor:pointer}.dropzone.drag{border-color:var(--accent2);background:#fff6ef}.dropzone img{max-width:100%;max-height:290px;object-fit:contain}.drop-help{font-size:13px;color:var(--soft);line-height:1.45}.filename{margin-top:8px;font-size:12px;color:var(--soft);word-break:break-all}.upload-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.progress{margin-top:12px;font-size:12px;line-height:1.5}.small{font-size:11px;color:var(--soft);line-height:1.45;margin-top:12px}
 @media(max-width:1050px){.content{grid-template-columns:1fr}.drop-card{position:static}.toolbar-grid{grid-template-columns:1fr 1fr}.toolbar-grid .field{grid-column:1/-1}}
 </style>
@@ -34,7 +34,7 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
 <div class="content">
   <section class="table-wrap">
     <table>
-      <thead><tr><th class="check"></th><th data-sort="numero">Référence DS</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="photo">Photo actuelle</th></tr><tr class="filter-row"><th></th><th><select data-filter="numero"></select></th><th><select data-filter="famille"></select></th><th><select data-filter="libelle"></select></th><th><select data-filter="photo"></select></th></tr></thead>
+      <thead><tr><th class="check"></th><th data-sort="numero">Référence DS</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="photo">Photo actuelle</th></tr></thead>
       <tbody id="body"></tbody>
     </table>
   </section>
@@ -58,7 +58,7 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
 </main>
 <script>
 const STATE_KEY='generateur_etiquettes_state';
-let articles=[];let articlesSource=[];const selected=new Set();let timer=null;let pngBlob=null;let objectUrl=null;let sortKey='numero',sortDir='asc';const columnFilters={};
+let articles=[];let articlesSource=[];const selected=new Set();let timer=null;let pngBlob=null;let objectUrl=null;let sortKey='numero',sortDir='asc';
 const $=id=>document.getElementById(id);
 
 function chargerSelectionAccueil(){
@@ -116,11 +116,10 @@ async function load(){
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function lignesAffichees(){
-  let rows=articles.filter(a=>Object.entries(columnFilters).every(([k,v])=>!v||valeurColonne(a,k)===v));
+  let rows=articles.slice();
   return rows.slice().sort((a,b)=>valeurColonne(a,sortKey).localeCompare(valeurColonne(b,sortKey),'fr',{numeric:true,sensitivity:'base'})*(sortDir==='asc'?1:-1));
 }
 function majFiltresColonnes(){
-  document.querySelectorAll('[data-filter]').forEach(sel=>{const key=sel.dataset.filter,current=columnFilters[key]||'';const vals=[...new Set(articles.map(a=>valeurColonne(a,key)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true,sensitivity:'base'}));sel.innerHTML='<option value="">Tous</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(current))sel.value=current;else{sel.value='';delete columnFilters[key]}});
 }
 function render(){
   majFiltresColonnes();
@@ -133,7 +132,7 @@ function render(){
   document.querySelectorAll('th[data-sort]').forEach(th=>{th.querySelector('.sort-mark')?.remove();if(th.dataset.sort===sortKey)th.insertAdjacentHTML('beforeend',`<span class="sort-mark">${sortDir==='asc'?'▲':'▼'}</span>`)});
   updateCount();
 }
-document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));document.querySelectorAll('[data-filter]').forEach(sel=>sel.addEventListener('change',()=>{const k=sel.dataset.filter;if(sel.value)columnFilters[k]=sel.value;else delete columnFilters[k];render()}));
+document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
 function updateCount(){$('selectionCount').textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');$('selectAll').checked=articles.length>0&&articles.every(a=>selected.has(a.numero));$('selectAll').indeterminate=articles.some(a=>selected.has(a.numero))&&!$('selectAll').checked}
 async function convertirEnPng(file){const bitmap=await createImageBitmap(file);const max=1600;let w=bitmap.width,h=bitmap.height;if(w>max||h>max){const ratio=Math.min(max/w,max/h);w=Math.round(w*ratio);h=Math.round(h*ratio)}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);bitmap.close();return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Conversion PNG impossible')),'image/png'))}
 async function setImage(file){try{pngBlob=await convertirEnPng(file);if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(pngBlob);$('preview').src=objectUrl;$('preview').style.display='block';$('placeholder').style.display='none';$('filename').textContent=file.name+' → PNG ('+Math.round(pngBlob.size/1024)+' Ko)';$('progress').textContent=''}catch(e){alert(e.message)}}

@@ -56,18 +56,52 @@ function config() {
 
 async function lireTable(table: string, params: Record<string, string>): Promise<JsonRow[]> {
   const { url, key } = config();
-  const endpoint = new URL(`/rest/v1/${encodeURIComponent(table)}`, url);
-  Object.entries(params).forEach(([name, value]) => endpoint.searchParams.set(name, value));
-  const response = await fetch(endpoint, {
-    headers: { apikey: key, ...(key.startsWith("eyJ") ? { Authorization: `Bearer ${key}` } : {}), Accept: "application/json", "Accept-Profile": "public" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const details = await response.text();
-    console.error(`Lecture Supabase ${table}:`, details);
-    throw new Error(`Lecture de la table ${table} impossible`);
+
+  // Supabase/PostgREST limite généralement une réponse REST à 1000 lignes.
+  // On pagine donc automatiquement jusqu'à atteindre la limite demandée.
+  const limiteDemandee = Math.max(1, Number(params.limit || "1000"));
+  const taillePage = Math.min(1000, limiteDemandee);
+  const resultats: JsonRow[] = [];
+  let offset = 0;
+
+  while (resultats.length < limiteDemandee) {
+    const restant = limiteDemandee - resultats.length;
+    const limitePage = Math.min(taillePage, restant);
+    const endpoint = new URL(`/rest/v1/${encodeURIComponent(table)}`, url);
+
+    Object.entries(params).forEach(([name, value]) => {
+      if (name !== "limit" && name !== "offset") {
+        endpoint.searchParams.set(name, value);
+      }
+    });
+    endpoint.searchParams.set("limit", String(limitePage));
+    endpoint.searchParams.set("offset", String(offset));
+
+    const response = await fetch(endpoint, {
+      headers: {
+        apikey: key,
+        ...(key.startsWith("eyJ") ? { Authorization: `Bearer ${key}` } : {}),
+        Accept: "application/json",
+        "Accept-Profile": "public",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      console.error(`Lecture Supabase ${table}:`, details);
+      throw new Error(`Lecture de la table ${table} impossible`);
+    }
+
+    const page = (await response.json()) as JsonRow[];
+    resultats.push(...page);
+
+    // Moins de lignes que demandé = dernière page.
+    if (page.length < limitePage || page.length === 0) break;
+    offset += page.length;
   }
-  return (await response.json()) as JsonRow[];
+
+  return resultats.slice(0, limiteDemandee);
 }
 
 function filtreEq(value: string): string { return `eq.${value}`; }
@@ -201,9 +235,11 @@ async function articles(activiteDs: string, groupe: string, q: string) {
     });
   }
 
+  const limiteResultats = Math.max(1000, Number(process.env.MAX_ARTICLES_RESULTATS || "10000"));
+
   return [...map.values()]
     .sort((a, b) => a.numero.localeCompare(b.numero, "fr", { numeric: true }))
-    .slice(0, 5000);
+    .slice(0, limiteResultats);
 }
 
 export async function GET(request: NextRequest) {
