@@ -127,7 +127,7 @@
     overflow:hidden;
   }
   .etq .sector-box .icon{width:5.5mm;height:7mm;flex:0 0 auto}
-  .etq .sector-box img.icon{width:7mm!important;height:7mm!important;object-fit:contain}
+  .etq .sector-box img.icon{width:7mm!important;height:7mm!important;object-fit:contain;display:block}
   .etq .sector-code{font-size:11.2px;font-weight:800;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .etq .remise-box{
     width:20.5mm;
@@ -215,12 +215,79 @@ function normaliserArticle(a){
     secteurPhoto:a.secteurPhoto || ''
   };
 }
-function batteryIconSvg(){
-  return `<svg class="icon" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
-    <rect x="6" y="0" width="12" height="4" rx="1.5" fill="currentColor"/>
-    <rect x="2" y="4" width="20" height="25" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-    <path d="M12 10 L7 18 H11 L9.5 24 L16 15 H12 L13.5 10 Z" fill="currentColor"/>
-  </svg>`;
+const SECTEUR_PICTO_CODES = {
+  "accumulateur thermique":"ACTH",
+  "cheminees":"CHEM",
+  "cheminee":"CHEM",
+  "traitement d'eau":"EAU",
+  "traitement eau":"EAU",
+  "equipement":"EQUIP",
+  "pompe a chaleur et climatisation":"PAC",
+  "pompe a chaleur & climatisation":"PAC",
+  "ventilation":"VENTIL",
+  "acth":"ACTH",
+  "chem":"CHEM",
+  "eau":"EAU",
+  "equip":"EQUIP",
+  "pac":"PAC",
+  "ventil":"VENTIL"
+};
+
+function normaliserTexteSecteur(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/’/g,"'")
+    .replace(/\s+/g,' ');
+}
+
+function codePictoSecteur(secteur){
+  return SECTEUR_PICTO_CODES[normaliserTexteSecteur(secteur)] || '';
+}
+
+function secteurPictoHtml(l){
+  // Une image explicite fournie avec l'article reste prioritaire.
+  if(l.secteurPhoto){
+    return `<img class="icon sector-picto" src="${esc(l.secteurPhoto)}" alt="Picto ${esc(l.secteur)}">`;
+  }
+
+  const code = codePictoSecteur(l.secteur);
+  if(!code) return '';
+
+  // Le fichier apercu.html est dans /generateur-etiquettes/.
+  // Copier le dossier local "Pictos secteurs" dans :
+  // public/generateur-etiquettes/Pictos secteurs/
+  // Le chargeur essaie automatiquement plusieurs extensions.
+  const base = './Pictos secteurs/' + code;
+  const candidates = [
+    base + '.png', base + '.PNG',
+    base + '.svg', base + '.SVG',
+    base + '.jpg', base + '.JPG',
+    base + '.jpeg', base + '.JPEG',
+    base + '.webp', base + '.WEBP'
+  ];
+
+  return `<img class="icon sector-picto"
+    src="${esc(candidates[0])}"
+    data-picto-candidates="${esc(JSON.stringify(candidates))}"
+    data-picto-index="0"
+    alt="Picto ${esc(l.secteur)}"
+    onerror="essayerPictoSuivant(this)">`;
+}
+
+function essayerPictoSuivant(img){
+  let candidates=[];
+  try{ candidates=JSON.parse(img.dataset.pictoCandidates || '[]'); }catch(e){}
+  const next=(Number(img.dataset.pictoIndex || 0) + 1);
+  if(next < candidates.length){
+    img.dataset.pictoIndex=String(next);
+    img.src=candidates[next];
+  }else{
+    img.onerror=null;
+    img.style.display='none';
+  }
 }
 function formatPrix(v){
   if(v===null||v===undefined||v==='') return '';
@@ -268,7 +335,7 @@ function buildLabelEl(raw){
     <div class="col-info">
       <div class="top-row">
         <div class="sector-box">
-          ${l.secteurPhoto?`<img class="icon" src="${esc(l.secteurPhoto)}" alt="">`:batteryIconSvg()}
+          ${secteurPictoHtml(l)}
           <div class="sector-code">${esc(l.secteur)}</div>
         </div>
         <div class="remise-box">${esc(l.remise)}</div>
