@@ -586,6 +586,11 @@
   .article-check-row .article-ref{font-weight:700;color:var(--accent);}
   .article-check-row .article-ean{text-align:right;color:var(--ink-soft);font-family:monospace;}
   .article-check-empty{padding:18px;text-align:center;color:var(--ink-soft);font-size:12px;}
+  .article-multi-field{position:relative;}
+  .article-multi-toggle{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--field-blue);font:inherit;font-size:13px;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left;}
+  .article-multi-toggle:focus{outline:2px solid var(--accent);outline-offset:1px;background:#fff;}
+  .article-multi-menu{position:absolute;z-index:50;top:100%;left:0;right:0;margin-top:4px;border:1px solid var(--line);border-radius:7px;background:#fff;box-shadow:0 8px 22px rgba(20,40,60,.18);max-height:320px;overflow:auto;padding:4px;}
+  .article-check-all{position:sticky;top:0;background:#f4f7f9;z-index:2;font-weight:700;}
   .selection-summary{font-size:12px;font-weight:600;color:var(--accent);margin-top:8px;}
   @media (max-width:760px){.filter-grid,.filter-grid-3{grid-template-columns:1fr}.article-check-row{grid-template-columns:24px 82px 1fr}.article-check-row .article-ean{grid-column:2/4;text-align:left;}}
 
@@ -651,9 +656,21 @@
           <label>2. Groupe</label>
           <select id="filterGroupe"><option value="Tous">Tous</option></select>
         </div>
-        <div class="field" style="margin:0;">
-          <label>3. Article</label>
-          <select id="filterArticle"><option value="">-- Choisir un article --</option></select>
+        <div class="field article-multi-field" style="margin:0;">
+          <label>3. Article(s)</label>
+          <button type="button" class="article-multi-toggle" id="articleMultiToggle" aria-expanded="false">
+            <span id="articleMultiLabel">Choisir un ou plusieurs articles</span>
+            <span aria-hidden="true">▼</span>
+          </button>
+          <div class="article-multi-menu" id="articleMultiMenu" hidden>
+            <label class="article-check-row article-check-all">
+              <input type="checkbox" id="selectAllArticles">
+              <span class="article-ref">Tous</span>
+              <span>Sélectionner tous les articles affichés</span>
+              <span></span>
+            </label>
+            <div id="articleChecklist"></div>
+          </div>
         </div>
       </div>
       <div class="article-filter-row">
@@ -663,8 +680,13 @@
         </div>
         <button type="button" class="btn btn-outline" id="refreshArticlesBtn">Actualiser</button>
       </div>
+      <div class="selection-summary" id="selectionSummary">0 article sélectionné</div>
+      <div class="article-actions">
+        <button type="button" class="btn btn-primary" id="addSelectedArticlesBtn">Ajouter les articles cochés</button>
+        <button type="button" class="btn btn-outline" id="clearSelectedArticlesBtn">Vider la sélection</button>
+      </div>
       <div class="database-status" id="databaseStatus">Chargement des secteurs…</div>
-      <div class="mapping-help">Le premier menu lit les valeurs uniques de <strong>famille.activite_ds</strong>, le deuxième <strong>familles.groupe</strong>, et le troisième <strong>articles.articles_numero</strong>. Le choix de l'article remplit automatiquement les champs ci-dessous.</div>
+      <div class="mapping-help">Le premier menu lit les valeurs uniques de <strong>familles.activite_ds</strong>, le deuxième <strong>familles.groupe</strong>, et la liste affiche <strong>articles.articles_numero</strong>. Vous pouvez cocher un, plusieurs ou tous les articles.</div>
     </div>
 
     <div class="field">
@@ -792,6 +814,7 @@ let currentPhotoData = null;
 let editingIndex = null;
 let selectedLabelFormat = null;
 let catalogueArticles = [];
+let articlesSelectionnes = new Set();
 let articleSearchTimer = null;
 
 function normaliserTexte(value){
@@ -818,17 +841,53 @@ function remplirSelectTous(select, values){
   if([...select.options].some(option => option.value === courant)) select.value=courant;
 }
 
-function remplirSelectArticles(articles){
-  const select=document.getElementById('filterArticle');
-  const courant=select.value;
-  select.innerHTML='<option value="">-- Choisir un article --</option><option value="Tous">Tous</option>';
-  articles.forEach(article => {
-    const option=document.createElement('option');
-    option.value=article.numero;
-    option.textContent=(article.numero || '—') + (article.libelle ? ' — ' + article.libelle : '');
-    select.appendChild(option);
+function mettreAJourResumeSelection(){
+  const count = articlesSelectionnes.size;
+  document.getElementById('selectionSummary').textContent = count + ' article' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+  document.getElementById('articleMultiLabel').textContent = count === 0
+    ? 'Choisir un ou plusieurs articles'
+    : count + ' article' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+
+  const visibles = catalogueArticles.map(article => String(article.numero));
+  const tousVisiblesSelectionnes = visibles.length > 0 && visibles.every(numero => articlesSelectionnes.has(numero));
+  const caseTous = document.getElementById('selectAllArticles');
+  caseTous.checked = tousVisiblesSelectionnes;
+  caseTous.indeterminate = !tousVisiblesSelectionnes && visibles.some(numero => articlesSelectionnes.has(numero));
+}
+
+function remplirListeArticles(articles){
+  const container = document.getElementById('articleChecklist');
+  if(!articles.length){
+    container.innerHTML = '<div class="article-check-empty">Aucun article disponible.</div>';
+    mettreAJourResumeSelection();
+    return;
+  }
+
+  container.innerHTML = articles.map(article => {
+    const numero = String(article.numero || '');
+    const checked = articlesSelectionnes.has(numero) ? 'checked' : '';
+    return `
+      <label class="article-check-row">
+        <input type="checkbox" class="article-checkbox" value="${escapeHtml(numero)}" ${checked}>
+        <span class="article-ref">${escapeHtml(numero) || '—'}</span>
+        <span>${escapeHtml(article.libelle || '') || '—'}</span>
+        <span class="article-ean"></span>
+      </label>`;
+  }).join('');
+
+  container.querySelectorAll('.article-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', async () => {
+      const numero = checkbox.value;
+      if(checkbox.checked){
+        articlesSelectionnes.add(numero);
+        await chargerDetailNumero(numero);
+      }else{
+        articlesSelectionnes.delete(numero);
+      }
+      mettreAJourResumeSelection();
+    });
   });
-  if([...select.options].some(option => option.value===courant)) select.value=courant;
+  mettreAJourResumeSelection();
 }
 
 async function chargerSecteurs(){
@@ -865,11 +924,11 @@ async function chargerArticles(){
     status.textContent='Chargement des articles…';
     const payload=await apiCatalogue(params);
     catalogueArticles=Array.isArray(payload.articles)?payload.articles:[];
-    remplirSelectArticles(catalogueArticles);
+    remplirListeArticles(catalogueArticles);
     status.textContent=catalogueArticles.length+' article(s) disponible(s).';
   }catch(error){
     catalogueArticles=[];
-    remplirSelectArticles([]);
+    remplirListeArticles([]);
     status.textContent='Erreur : '+error.message;
   }
 }
@@ -909,19 +968,44 @@ function chargerArticleDansFormulaire(article){
   applyBarcodeTypeUI();
 }
 
-async function chargerDetailArticle(){
-  const numero=document.getElementById('filterArticle').value;
+async function chargerDetailNumero(numero){
   const status=document.getElementById('databaseStatus');
-  if(!numero || numero==='Tous'){
-    status.textContent=numero==='Tous' ? 'Sélectionnez un article précis pour remplir les champs.' : 'Choisissez un article.';
-    return;
-  }
+  if(!numero) return null;
   try{
     status.textContent='Chargement de l’article '+numero+'…';
     const payload=await apiCatalogue({action:'detail', numero});
-    chargerArticleDansFormulaire(payload.article || {});
+    const article = payload.article || {};
+    chargerArticleDansFormulaire(article);
     status.textContent='Article '+numero+' chargé dans le formulaire.';
-  }catch(error){ status.textContent='Erreur : '+error.message; }
+    return article;
+  }catch(error){
+    status.textContent='Erreur : '+error.message;
+    return null;
+  }
+}
+
+async function ajouterArticlesCoches(){
+  const numeros = [...articlesSelectionnes];
+  const status = document.getElementById('databaseStatus');
+  if(!numeros.length){
+    status.textContent='Cochez au moins un article.';
+    return;
+  }
+
+  let ajoutes = 0;
+  status.textContent='Ajout de '+numeros.length+' article(s)…';
+  for(const numero of numeros){
+    try{
+      const payload = await apiCatalogue({action:'detail', numero});
+      const data = articleVersEtiquette(payload.article || {});
+      const existe = labels.some(label => label.refds === data.refds && label.barcode === data.barcode);
+      if(!existe){ labels.push(data); ajoutes++; }
+    }catch(error){
+      console.error('Article non ajouté', numero, error);
+    }
+  }
+  renderQueue();
+  status.textContent=ajoutes+' article(s) ajouté(s) à la liste d’impression.';
 }
 
 const LABEL_FORMATS = {
@@ -1413,9 +1497,46 @@ document.getElementById('printBtn').addEventListener('click', () => {
   window.print();
 });
 
-document.getElementById('filterSecteur').addEventListener('change', chargerGroupes);
-document.getElementById('filterGroupe').addEventListener('change', chargerArticles);
-document.getElementById('filterArticle').addEventListener('change', chargerDetailArticle);
+document.getElementById('filterSecteur').addEventListener('change', async () => {
+  articlesSelectionnes.clear();
+  mettreAJourResumeSelection();
+  await chargerGroupes();
+});
+document.getElementById('filterGroupe').addEventListener('change', async () => {
+  articlesSelectionnes.clear();
+  mettreAJourResumeSelection();
+  await chargerArticles();
+});
+
+const articleMultiToggle = document.getElementById('articleMultiToggle');
+const articleMultiMenu = document.getElementById('articleMultiMenu');
+articleMultiToggle.addEventListener('click', () => {
+  const ouvert = !articleMultiMenu.hidden;
+  articleMultiMenu.hidden = ouvert;
+  articleMultiToggle.setAttribute('aria-expanded', String(!ouvert));
+});
+
+document.addEventListener('click', event => {
+  if(!event.target.closest('.article-multi-field')){
+    articleMultiMenu.hidden = true;
+    articleMultiToggle.setAttribute('aria-expanded', 'false');
+  }
+});
+
+document.getElementById('selectAllArticles').addEventListener('change', event => {
+  catalogueArticles.forEach(article => {
+    const numero = String(article.numero);
+    if(event.target.checked) articlesSelectionnes.add(numero);
+    else articlesSelectionnes.delete(numero);
+  });
+  remplirListeArticles(catalogueArticles);
+});
+
+document.getElementById('addSelectedArticlesBtn').addEventListener('click', ajouterArticlesCoches);
+document.getElementById('clearSelectedArticlesBtn').addEventListener('click', () => {
+  articlesSelectionnes.clear();
+  remplirListeArticles(catalogueArticles);
+});
 document.getElementById('articleSearch').addEventListener('input', () => {
   clearTimeout(articleSearchTimer);
   articleSearchTimer = setTimeout(chargerArticles, 300);
