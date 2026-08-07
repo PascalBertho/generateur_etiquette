@@ -169,7 +169,6 @@ async function articles(
       `reference_ds.ilike.${motif}`,
       `libelle.ilike.${motif}`,
       `reference_fournisseur.ilike.${motif}`,
-      `code_barre.ilike.${motif}`,
       `famille.ilike.${motif}`,
     ].join(",");
   }
@@ -227,7 +226,6 @@ async function referencesFiltrees(
       `reference_ds.ilike.${motif}`,
       `libelle.ilike.${motif}`,
       `reference_fournisseur.ilike.${motif}`,
-      `code_barre.ilike.${motif}`,
       `famille.ilike.${motif}`,
     ].join(",");
   }
