@@ -26,7 +26,7 @@ main{padding:18px 22px}.toolbar,.drop-card{background:#fff;border:1px solid var(
     <button class="btn primary" id="refreshBtn">Actualiser</button>
     <button class="btn outline danger" id="clearBtn">Vider la sélection</button>
   </div>
-  <div class="summary"><label><input type="checkbox" id="selectAll"> <strong>Tous les articles affichés</strong></label><span id="selectionCount">0 article sélectionné</span></div>
+  <div class="summary"><label><input type="checkbox" id="selectAll"> <strong>Tous les articles sélectionnés affichés</strong></label><span id="selectionCount">0 article sélectionné</span></div>
   <div class="status" id="contextInfo"></div>
   <div class="status" id="status">Chargement des articles…</div>
 </section>
@@ -88,7 +88,7 @@ function lireContexteAccueil(){
       if(contexte.activiteDs) morceaux.push('Activité DS : '+contexte.activiteDs);
       if(contexte.groupe) morceaux.push('Groupe : '+contexte.groupe);
       if(contexte.recherche) morceaux.push('Recherche : '+contexte.recherche);
-      $('contextInfo').textContent='Liste reprise de la page principale'+(morceaux.length?' — '+morceaux.join(' | '):'')+'.';
+      $('contextInfo').textContent='Articles sélectionnés dans la page principale'+(morceaux.length?' — '+morceaux.join(' | '):'')+'.';
       return true;
     }
   }catch(e){}
@@ -109,8 +109,10 @@ async function load(){
       appliquerRecherche();
       return;
     }
-    $('contextInfo').textContent="Aucun contexte reçu de la page principale : affichage de la liste générale.";
-    const p=await apiList();articlesSource=Array.isArray(p.articles)?p.articles:[];appliquerRecherche();
+    $('contextInfo').textContent="Aucune sélection reçue depuis la page principale. Retournez à la page principale et cochez les articles concernés.";
+    articlesSource=[]; articles=[]; render();
+    $('status').className='status error';
+    $('status').textContent='Aucun article sélectionné.';
   }catch(e){articles=[];articlesSource=[];render();$('status').className='status error';$('status').textContent='Erreur : '+e.message}
 }
 

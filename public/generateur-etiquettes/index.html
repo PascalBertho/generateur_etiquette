@@ -78,18 +78,27 @@ function lireEtat(){
   try{return JSON.parse(sessionStorage.getItem(STATE_KEY)||'{}')||{}}catch{return {}}
 }
 function enregistrerEtat(){
+  const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
   sessionStorage.setItem(STATE_KEY,JSON.stringify({
     activiteDs:filterSecteur.value,
     groupe:filterGroupe.value,
     recherche:articleSearch.value,
     page:currentPage,
-    selected:[...selected]
+    selected:[...selected],
+    selectedRows:lignesSelectionnees
   }));
 }
 function restaurerSelection(){
   const etat=lireEtat();
   selected.clear();
+  selectedArticles.clear();
   if(Array.isArray(etat.selected)) etat.selected.forEach(ref=>selected.add(String(ref)));
+  if(Array.isArray(etat.selectedRows)){
+    etat.selectedRows.forEach(article=>{
+      const ref=String(article?.numero||'');
+      if(ref && selected.has(ref)) selectedArticles.set(ref,article);
+    });
+  }
   currentPage=Math.max(1,Number(etat.page||1));
   restoreState=etat;
 }
@@ -183,9 +192,20 @@ prevPageBtn.addEventListener('click',()=>allerPage(currentPage-1));
 nextPageBtn.addEventListener('click',()=>allerPage(currentPage+1));
 lastPageBtn.addEventListener('click',()=>allerPage(totalPages));
 photoBtn.addEventListener('click',()=>{
+  articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});
+  const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
+  if(!lignesSelectionnees.length){
+    alert('Sélectionnez au moins un article avant d’ouvrir la page Photo.');
+    return;
+  }
   enregistrerEtat();
-  sessionStorage.setItem('photos_articles_liste', JSON.stringify(articles));
-  sessionStorage.setItem('photos_articles_contexte', JSON.stringify({activiteDs:filterSecteur.value,groupe:filterGroupe.value,recherche:articleSearch.value.trim(),page:currentPage,pageSize:PAGE_SIZE,total:totalArticles}));
+  sessionStorage.setItem('photos_articles_liste', JSON.stringify(lignesSelectionnees));
+  sessionStorage.setItem('photos_articles_contexte', JSON.stringify({
+    activiteDs:filterSecteur.value,
+    groupe:filterGroupe.value,
+    recherche:articleSearch.value.trim(),
+    selectionCount:lignesSelectionnees.length
+  }));
   location.href='/generateur-etiquettes/photos.html';
 });
 previewBtn.addEventListener('click',()=>{articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});const rows=[...selectedArticles.values()].filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}enregistrerEtat();sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
