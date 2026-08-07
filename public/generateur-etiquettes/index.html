@@ -13,7 +13,7 @@ button,select,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14p
 main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(260px,1.4fr) auto auto auto;gap:12px;align-items:end}.field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:5px}.field select,.field input{width:100%;height:39px;border:1px solid #9fb0bd;border-radius:7px;padding:0 10px;background:#fff;color:var(--ink)}
 .status{margin-top:10px;font-size:12px;color:var(--soft)}.summary{margin-top:10px;display:flex;align-items:center;gap:12px;font-size:13px}.summary strong{color:var(--accent)}
-.table-wrap{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 230px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:1380px}thead th{position:sticky;top:0;z-index:2;background:#eaf0f4;color:#405565;text-align:left;padding:9px 8px;border-bottom:1px solid #b9c6cf;white-space:nowrap}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:middle}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check-col{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.price{text-align:right;white-space:nowrap}.barcode-text{font-family:Consolas,monospace;white-space:nowrap}.barcode-preview svg{max-width:150px;height:42px}.muted{color:#8998a5}
+.table-wrap{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 230px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:1500px}thead th{position:sticky;top:0;z-index:2;background:#eaf0f4;color:#405565;text-align:left;padding:9px 8px;border-bottom:1px solid #b9c6cf;white-space:nowrap}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:middle}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check-col{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.price{text-align:right;white-space:nowrap}.barcode-text{font-family:Consolas,monospace;white-space:nowrap}.barcode-preview svg{max-width:150px;height:42px}.photo-thumb{width:54px;height:44px;object-fit:contain;border:1px solid var(--line);border-radius:5px;background:#fff}.photo-cell{min-width:86px}.photo-missing{font-size:11px;color:#8998a5}.muted{color:#8998a5}
 @media(max-width:1000px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}}
 </style>
 </head>
@@ -45,39 +45,69 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
     <table>
       <thead><tr>
         <th class="check-col"></th>
-        <th>Référence DS</th><th>Référence fournisseur</th><th>Groupe</th><th>Famille</th><th>Libellé</th><th>Secteur</th><th>Prix</th><th>Code à barre</th><th>Aperçu code barre</th>
+        <th>Référence DS</th><th>Référence fournisseur</th><th>Groupe</th><th>Famille</th><th>Libellé</th><th>Secteur</th><th>Prix</th><th>Code à barre</th><th>Aperçu code barre</th><th>Photo actuelle</th>
       </tr></thead>
       <tbody id="articlesBody"></tbody>
     </table>
   </section>
 </main>
 <script>
-let articles=[]; const selected=new Set(); let timer=null;
-async function api(params){const q=new URLSearchParams(params);const r=await fetch('/api/articles?'+q,{credentials:'same-origin',cache:'no-store'});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';throw new Error('Session expirée')}if(!r.ok)throw new Error(p.error||'Erreur API');return p}
-function fillSelect(el,values){const old=el.value;el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if([...el.options].some(o=>o.value===old))el.value=old}
-async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[]);await loadGroupes()}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadGroupes(){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[]);await loadArticles()}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];render();status.textContent=articles.length+' article(s) affiché(s).'}catch(e){articles=[];render();status.textContent='Erreur : '+e.message}}
+const STATE_KEY='generateur_etiquettes_state';
+let articles=[];
+const selected=new Set();
+let timer=null;
+let restoreState=null;
+
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function render(){articlesBody.innerHTML=articles.map((a,i)=>`<tr data-i="${i}" class="${selected.has(a.numero)?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(a.numero)}" ${selected.has(a.numero)?'checked':''}></td><td class="ref">${esc(a.numero)}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td></tr>`).join('');
-  document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=e.target.dataset.ref;e.target.checked?selected.add(ref):selected.delete(ref);render();updateCount()}));
+function lireEtat(){
+  try{return JSON.parse(sessionStorage.getItem(STATE_KEY)||'{}')||{}}catch{return {}}
+}
+function enregistrerEtat(){
+  sessionStorage.setItem(STATE_KEY,JSON.stringify({
+    activiteDs:filterSecteur.value,
+    groupe:filterGroupe.value,
+    recherche:articleSearch.value,
+    selected:[...selected]
+  }));
+}
+function restaurerSelection(){
+  const etat=lireEtat();
+  selected.clear();
+  if(Array.isArray(etat.selected)) etat.selected.forEach(ref=>selected.add(String(ref)));
+  restoreState=etat;
+}
+async function api(params){const q=new URLSearchParams(params);const r=await fetch('/api/articles?'+q,{credentials:'same-origin',cache:'no-store'});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';throw new Error('Session expirée')}if(!r.ok)throw new Error(p.error||'Erreur API');return p}
+function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
+async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){status.textContent='Erreur : '+e.message}}
+async function loadGroupes(restoring=false){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){status.textContent='Erreur : '+e.message}}
+async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];render();status.textContent=articles.length+' article(s) affiché(s).';enregistrerEtat()}catch(e){articles=[];render();status.textContent='Erreur : '+e.message}}
+function photoHtml(a,i){
+  const ref=encodeURIComponent(a.numero||'');
+  const version=Date.now();
+  return `<div class="photo-cell"><img loading="lazy" class="photo-thumb" src="/api/articles/photos?ref=${ref}&v=${version}" alt="Photo ${esc(a.numero)}" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"> <span class="photo-missing" style="display:none">Aucune</span></div>`;
+}
+function render(){
+  articlesBody.innerHTML=articles.map((a,i)=>`<tr data-i="${i}" class="${selected.has(a.numero)?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(a.numero)}" ${selected.has(a.numero)?'checked':''}></td><td class="ref">${esc(a.numero)}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td><td>${photoHtml(a,i)}</td></tr>`).join('');
+  document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=e.target.dataset.ref;e.target.checked?selected.add(ref):selected.delete(ref);enregistrerEtat();render()}));
   articles.forEach((a,i)=>{if(!a.barcode)return;try{const val=a.barcodeType==='EAN13'&&/^\d{13}$/.test(a.barcode)?a.barcode.slice(0,12):a.barcode;JsBarcode('#bc-'+i,val,{format:a.barcodeType||'CODE128',displayValue:false,height:30,width:1,margin:2})}catch{}});
   updateCount();
 }
 function updateCount(){selectionCount.textContent=selected.size+' article'+(selected.size>1?'s':'')+' sélectionné'+(selected.size>1?'s':'');selectAll.checked=articles.length>0&&articles.every(a=>selected.has(a.numero));selectAll.indeterminate=articles.some(a=>selected.has(a.numero))&&!selectAll.checked}
-filterSecteur.addEventListener('change',loadGroupes);filterGroupe.addEventListener('change',loadArticles);refreshBtn.addEventListener('click',loadArticles);articleSearch.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(loadArticles,300)});
-selectAll.addEventListener('change',()=>{if(selectAll.checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));render()});clearSelectionBtn.addEventListener('click',()=>{selected.clear();render()});
+filterSecteur.addEventListener('change',()=>{filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
+filterGroupe.addEventListener('change',()=>{enregistrerEtat();loadArticles()});
+refreshBtn.addEventListener('click',loadArticles);
+articleSearch.addEventListener('input',()=>{enregistrerEtat();clearTimeout(timer);timer=setTimeout(loadArticles,300)});
+selectAll.addEventListener('change',()=>{if(selectAll.checked)articles.forEach(a=>selected.add(a.numero));else articles.forEach(a=>selected.delete(a.numero));enregistrerEtat();render()});
+clearSelectionBtn.addEventListener('click',()=>{selected.clear();enregistrerEtat();render()});
 photoBtn.addEventListener('click',()=>{
+  enregistrerEtat();
   sessionStorage.setItem('photos_articles_liste', JSON.stringify(articles));
-  sessionStorage.setItem('photos_articles_contexte', JSON.stringify({
-    activiteDs: filterSecteur.value,
-    groupe: filterGroupe.value,
-    recherche: articleSearch.value.trim()
-  }));
+  sessionStorage.setItem('photos_articles_contexte', JSON.stringify({activiteDs:filterSecteur.value,groupe:filterGroupe.value,recherche:articleSearch.value.trim()}));
   location.href='/generateur-etiquettes/photos.html';
 });
-previewBtn.addEventListener('click',()=>{const rows=articles.filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
+previewBtn.addEventListener('click',()=>{const rows=articles.filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}enregistrerEtat();sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
 logoutBtn.addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'})}catch{}location.href='/login'});
+restaurerSelection();
 loadActivites();
 </script>
 </body></html>

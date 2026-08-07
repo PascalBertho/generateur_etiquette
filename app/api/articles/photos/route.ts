@@ -180,9 +180,13 @@ export async function GET(request: NextRequest) {
   try {
     const ref = request.nextUrl.searchParams.get("ref")?.trim() || "";
     if (ref) {
-      const filename = await lirePhotoArticle(ref);
-      if (!filename) return new Response(null, { status: 404 });
-      return chargerObjetStorage(filename);
+      const filenameDb = await lirePhotoArticle(ref);
+      const candidats = [filenameDb, nomFichierPourRef(ref)].filter((value, index, all) => value && all.indexOf(value) === index);
+      for (const filename of candidats) {
+        const photo = await chargerObjetStorage(filename);
+        if (photo.status === 200) return photo;
+      }
+      return new Response(null, { status: 404 });
     }
 
     const q = request.nextUrl.searchParams.get("q")?.trim() || "";

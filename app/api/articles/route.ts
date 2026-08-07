@@ -59,7 +59,7 @@ async function lireTable(table: string, params: Record<string, string>): Promise
   const endpoint = new URL(`/rest/v1/${encodeURIComponent(table)}`, url);
   Object.entries(params).forEach(([name, value]) => endpoint.searchParams.set(name, value));
   const response = await fetch(endpoint, {
-    headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json", "Accept-Profile": "public" },
+    headers: { apikey: key, ...(key.startsWith("eyJ") ? { Authorization: `Bearer ${key}` } : {}), Accept: "application/json", "Accept-Profile": "public" },
     cache: "no-store",
   });
   if (!response.ok) {
@@ -128,7 +128,7 @@ async function articles(activiteDs: string, groupe: string, q: string) {
   const chunkSize = 150;
   for (let i = 0; i < famillesCodes.length; i += chunkSize) {
     articleRows.push(...await lireTable(articlesTable, {
-      select: "articles_numero,articles_nomfr,articles_famille,articles_prix_vente",
+      select: "articles_numero,articles_nomfr,articles_famille,articles_prix_vente,articles_photo",
       articles_famille: filtreIn(famillesCodes.slice(i, i + chunkSize)),
       order: "articles_numero.asc",
       limit: "10000",
@@ -142,6 +142,7 @@ async function articles(activiteDs: string, groupe: string, q: string) {
       libelle: texte(row.articles_nomfr),
       famille: texte(row.articles_famille),
       prix: texte(row.articles_prix_vente),
+      photo: texte(row.articles_photo),
     }))
     .filter((row) => row.numero && (!recherche || normaliser(`${row.numero} ${row.libelle} ${row.famille}`).includes(recherche)));
 
@@ -192,6 +193,7 @@ async function articles(activiteDs: string, groupe: string, q: string) {
       activiteDs: fam.activiteDs,
       secteur: secteurParActivite.get(normaliser(fam.activiteDs)) || fam.activiteDs,
       prix: Number.isFinite(prixNombre) ? prixNombre.toFixed(2) : "",
+      photo: row.photo,
       barcode,
       barcodeType: typeCodeBarre(code.type_code_barre, barcode),
       groupeArticles: texte(code.groupe_articles),
