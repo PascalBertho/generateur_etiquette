@@ -48,10 +48,12 @@
   }
   .layout{
     display:grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns:minmax(620px, 1.15fr) minmax(460px, .85fr);
     gap:24px;
     padding:24px;
     align-items:start;
+    max-width:1680px;
+    margin:0 auto;
   }
   @media (max-width: 980px){
     .layout{grid-template-columns:1fr;}
@@ -772,7 +774,7 @@
     </div>
   </div>
 
-  <!-- RIGHT SIDE: QUEUE + PREVIEW -->
+  <!-- RIGHT SIDE: QUEUE -->
   <div>
     <div class="card no-print" style="margin-bottom:20px;">
       <div class="list-title">
@@ -795,15 +797,12 @@
       <div class="empty-msg" id="queueEmpty">Aucune étiquette ajoutée pour le moment.</div>
 
       <div class="actions" style="margin-top:16px;">
-        <button class="btn btn-accent" id="generateBtn">Générer les pages A4</button>
-        <button class="btn btn-outline no-print" id="printBtn">Imprimer / Export PDF</button>
+        <button class="btn btn-accent" id="generateBtn">Ouvrir l’aperçu des étiquettes</button>
+        <button class="btn btn-outline no-print" id="printBtn">Ouvrir l’aperçu / Imprimer</button>
         <button class="btn btn-danger" id="resetAllBtn" style="padding:10px 16px; font-size:13px;">Tout effacer</button>
       </div>
     </div>
 
-    <div id="sheets-wrap">
-      <div id="empty-sheets">Les pages A4 avec les étiquettes générées s'afficheront ici.</div>
-    </div>
   </div>
 
 </div>
@@ -1028,10 +1027,7 @@ function applyLabelFormat(format){
   document.getElementById('formatModal').classList.add('is-hidden');
   document.body.classList.remove('format-choice-open');
 
-  // Si des pages sont déjà visibles, on les régénère avec le format choisi.
-  if(document.querySelector('#sheets-wrap .sheet')){
-    document.getElementById('generateBtn').click();
-  }
+  // Le format choisi sera transmis à la page d’aperçu lors de son ouverture.
 }
 
 document.querySelectorAll('.format-option').forEach(button => {
@@ -1325,7 +1321,6 @@ document.getElementById('resetAllBtn').addEventListener('click', () => {
     editingIndex = null;
     document.getElementById('addBtn').textContent = "+ Ajouter l'étiquette";
     renderQueue();
-    document.getElementById('sheets-wrap').innerHTML = '<div id="empty-sheets">Les pages A4 avec les étiquettes générées s\'afficheront ici.</div>';
   }
 });
 
@@ -1397,62 +1392,27 @@ function pictogrammeSecteurSvg(groupeOuSecteur){
 
 const LABELS_PER_PAGE = 6;
 
-document.getElementById('generateBtn').addEventListener('click', () => {
-  const wrap = document.getElementById('sheets-wrap');
+function ouvrirPageApercu(){
   if(labels.length === 0){
-    wrap.innerHTML = '<div id="empty-sheets">Ajoutez au moins une étiquette avant de générer les pages.</div>';
+    alert('Ajoutez au moins une étiquette avant d’ouvrir l’aperçu.');
     return;
   }
-  wrap.innerHTML = '';
 
-  const pageCount = Math.ceil(labels.length / LABELS_PER_PAGE);
-
-  for(let p = 0; p < pageCount; p++){
-    const sheet = document.createElement('div');
-    sheet.className = 'sheet';
-    sheet.innerHTML = `<div class="page-label">Page ${p+1} / ${pageCount} — ${Math.min(LABELS_PER_PAGE, labels.length - p*LABELS_PER_PAGE)} étiquette(s)</div>`;
-
-    const pageLabels = labels.slice(p*LABELS_PER_PAGE, p*LABELS_PER_PAGE + LABELS_PER_PAGE);
-    pageLabels.forEach((l) => {
-      sheet.appendChild(buildLabelEl(l));
-    });
-    wrap.appendChild(sheet);
+  try{
+    localStorage.setItem('generateurEtiquettes.labels', JSON.stringify(labels));
+    localStorage.setItem('generateurEtiquettes.format', selectedLabelFormat || 'ghlin');
+  }catch(error){
+    alert('Impossible de préparer l’aperçu. Les photos sont peut-être trop volumineuses.');
+    return;
   }
 
-  // Generate barcodes after elements are in DOM
-  document.querySelectorAll('.barcode-svg').forEach(svgEl => {
-    const value = svgEl.getAttribute('data-value');
-    const type = svgEl.getAttribute('data-type') || 'EAN13';
-    if(value){
-      try{
-        const barcodeSizeOptions = selectedLabelFormat === 'liege'
-          ? { fontSize: 8, height: 24, width: 1.1 }
-          : { fontSize: 11, height: 34, width: 1.4 };
+  const previewWindow = window.open('/generateur-etiquettes/apercu.html', '_blank', 'noopener');
+  if(!previewWindow){
+    alert('Le navigateur a bloqué l’ouverture de la page d’aperçu. Autorisez les fenêtres pour ce site.');
+  }
+}
 
-        if(type === 'EAN13'){
-          // Idem : 12 premiers chiffres, clé de contrôle EAN13 recalculée automatiquement.
-          JsBarcode(svgEl, value.slice(0, 12), {
-            format: "EAN13",
-            displayValue: true,
-            fontSize: barcodeSizeOptions.fontSize,
-            height: barcodeSizeOptions.height,
-            margin: 0,
-            width: barcodeSizeOptions.width
-          });
-        }else{
-          JsBarcode(svgEl, value, {
-            format: type,
-            displayValue: true,
-            fontSize: barcodeSizeOptions.fontSize,
-            height: barcodeSizeOptions.height,
-            margin: 0,
-            width: barcodeSizeOptions.width
-          });
-        }
-      }catch(e){ /* code invalide, la case restera vide */ }
-    }
-  });
-});
+document.getElementById('generateBtn').addEventListener('click', ouvrirPageApercu);
 
 function buildLabelEl(l){
   const etq = document.createElement('div');
@@ -1493,9 +1453,7 @@ function buildLabelEl(l){
   return etq;
 }
 
-document.getElementById('printBtn').addEventListener('click', () => {
-  window.print();
-});
+document.getElementById('printBtn').addEventListener('click', ouvrirPageApercu);
 
 document.getElementById('filterSecteur').addEventListener('change', async () => {
   articlesSelectionnes.clear();
