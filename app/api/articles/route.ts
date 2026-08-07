@@ -145,7 +145,17 @@ async function famillesFiltrees(activiteDs: string, groupe: string): Promise<Jso
   return lireTable(famillesTable, params);
 }
 
-async function articles(activiteDs: string, groupe: string, q: string) {
+async function articles(
+  activiteDs: string,
+  groupe: string,
+  q: string,
+  pageDemandee: number,
+  pageSizeDemande: number,
+) {
+  const PAGE_SIZE_MAX = 5000;
+  const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, pageSizeDemande || PAGE_SIZE_MAX));
+  const page = Math.max(1, pageDemandee || 1);
+
   const familles = await famillesFiltrees(activiteDs, groupe);
   const familleParCode = new Map<string, { activiteDs: string; groupe: string }>();
   for (const row of familles) {
@@ -155,70 +165,106 @@ async function articles(activiteDs: string, groupe: string, q: string) {
     }
   }
   const famillesCodes = [...familleParCode.keys()];
-  if (!famillesCodes.length) return [];
+  if (!famillesCodes.length) {
+    return { articles: [], total: 0, page: 1, pageSize, totalPages: 1 };
+  }
 
   const { articlesTable, codesTable, correspondanceTable } = config();
   const articleRows: JsonRow[] = [];
   const chunkSize = 150;
+
+  // On récupère les références correspondant aux familles, puis on ne complète
+  // les données code-barres que pour la page demandée (maximum 5000 articles).
   for (let i = 0; i < famillesCodes.length; i += chunkSize) {
     articleRows.push(...await lireTable(articlesTable, {
       select: "articles_numero,articles_nomfr,articles_famille,articles_prix_vente,articles_photo",
       articles_famille: filtreIn(famillesCodes.slice(i, i + chunkSize)),
       order: "articles_numero.asc",
-      limit: "10000",
+      limit: "50000",
     }));
   }
 
   const recherche = normaliser(q);
-  const articlesBase = articleRows
-    .map((row) => ({
-      numero: texte(row.articles_numero).replace(/\.0$/, ""),
-      libelle: texte(row.articles_nomfr),
-      famille: texte(row.articles_famille),
-      prix: texte(row.articles_prix_vente),
-      photo: texte(row.articles_photo),
-    }))
-    .filter((row) => row.numero && (!recherche || normaliser(`${row.numero} ${row.libelle} ${row.famille}`).includes(recherche)));
+  const baseParNumero = new Map<string, {
+    numero: string;
+    libelle: string;
+    famille: string;
+    prix: string;
+    photo: string;
+  }>();
 
-  const numeros = valeursUniques(articlesBase.map((row) => row.numero));
+  for (const row of articleRows) {
+    const numero = texte(row.articles_numero).replace(/\.0$/, "");
+    const libelle = texte(row.articles_nomfr);
+    const famille = texte(row.articles_famille);
+    if (!numero) continue;
+    if (recherche && !normaliser(`${numero} ${libelle} ${famille}`).includes(recherche)) continue;
+    if (!baseParNumero.has(numero)) {
+      baseParNumero.set(numero, {
+        numero,
+        libelle,
+        famille,
+        prix: texte(row.articles_prix_vente),
+        photo: texte(row.articles_photo),
+      });
+    }
+  }
+
+  const articlesTries = [...baseParNumero.values()].sort((a, b) =>
+    a.numero.localeCompare(b.numero, "fr", { numeric: true, sensitivity: "base" }),
+  );
+
+  const total = articlesTries.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pageEffective = Math.min(page, totalPages);
+  const debut = (pageEffective - 1) * pageSize;
+  const articlesPage = articlesTries.slice(debut, debut + pageSize);
+
+  const numeros = articlesPage.map((row) => row.numero);
   const codesParRef = new Map<string, JsonRow>();
   for (let i = 0; i < numeros.length; i += chunkSize) {
     const rows = await lireTable(codesTable, {
       select: "ref_ds,ref_fournisseur,groupe_articles,code_remise,code_barre,type_code_barre",
       ref_ds: filtreIn(numeros.slice(i, i + chunkSize)),
-      limit: "10000",
+      limit: "50000",
     });
     for (const row of rows) {
       const ref = texte(row.ref_ds).replace(/\.0$/, "");
       if (!ref) continue;
       const existing = codesParRef.get(ref);
-      if (!existing || (!texte(existing.code_barre) && texte(row.code_barre))) codesParRef.set(ref, row);
+      if (!existing || (!texte(existing.code_barre) && texte(row.code_barre))) {
+        codesParRef.set(ref, row);
+      }
     }
   }
 
-  const activitesUtiles = valeursUniques([...familleParCode.values()].map((x) => x.activiteDs));
+  const activitesUtiles = valeursUniques(
+    articlesPage
+      .map((row) => familleParCode.get(row.famille)?.activiteDs || "")
+      .filter(Boolean),
+  );
   const secteurParActivite = new Map<string, string>();
   if (activitesUtiles.length) {
     const rows = await lireTable(correspondanceTable, {
       select: "activite_ds,secteur",
       activite_ds: filtreIn(activitesUtiles),
-      limit: "1000",
+      limit: "5000",
     });
     for (const row of rows) {
       const a = texte(row.activite_ds);
-      const s = texte(row.secteur);
-      if (a && s && !secteurParActivite.has(normaliser(a))) secteurParActivite.set(normaliser(a), s);
+      const secteur = texte(row.secteur);
+      if (a && secteur && !secteurParActivite.has(normaliser(a))) {
+        secteurParActivite.set(normaliser(a), secteur);
+      }
     }
   }
 
-  const map = new Map<string, any>();
-  for (const row of articlesBase) {
-    if (map.has(row.numero)) continue;
+  const values = articlesPage.map((row) => {
     const fam = familleParCode.get(row.famille) || { activiteDs: "", groupe: "" };
     const code = codesParRef.get(row.numero) || {};
     const barcode = texte(code.code_barre).replace(/\.0$/, "").replace(/\s/g, "");
     const prixNombre = Number(row.prix.replace(/\s/g, "").replace(",", "."));
-    map.set(row.numero, {
+    return {
       numero: row.numero,
       refFournisseur: texte(code.ref_fournisseur),
       groupe: fam.groupe,
@@ -232,14 +278,16 @@ async function articles(activiteDs: string, groupe: string, q: string) {
       barcodeType: typeCodeBarre(code.type_code_barre, barcode),
       groupeArticles: texte(code.groupe_articles),
       remise: texte(code.code_remise),
-    });
-  }
+    };
+  });
 
-  const limiteResultats = Math.max(1000, Number(process.env.MAX_ARTICLES_RESULTATS || "10000"));
-
-  return [...map.values()]
-    .sort((a, b) => a.numero.localeCompare(b.numero, "fr", { numeric: true }))
-    .slice(0, limiteResultats);
+  return {
+    articles: values,
+    total,
+    page: pageEffective,
+    pageSize,
+    totalPages,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -251,6 +299,8 @@ export async function GET(request: NextRequest) {
     const activiteDs = request.nextUrl.searchParams.get("activite_ds")?.trim() || "Tous";
     const groupe = request.nextUrl.searchParams.get("groupe")?.trim() || "Tous";
     const q = request.nextUrl.searchParams.get("q")?.trim() || "";
+    const page = Math.max(1, Number(request.nextUrl.searchParams.get("page") || "1"));
+    const pageSize = Math.min(5000, Math.max(1, Number(request.nextUrl.searchParams.get("page_size") || "5000")));
 
     if (action === "secteurs" || action === "activites") {
       const values = await activites();
@@ -258,8 +308,7 @@ export async function GET(request: NextRequest) {
     }
     if (action === "groupes") return NextResponse.json({ groupes: await groupes(activiteDs) });
     if (action === "articles") {
-      const values = await articles(activiteDs, groupe, q);
-      return NextResponse.json({ articles: values, total: values.length });
+      return NextResponse.json(await articles(activiteDs, groupe, q, page, pageSize));
     }
     return NextResponse.json({ error: "Action inconnue" }, { status: 400 });
   } catch (error) {
