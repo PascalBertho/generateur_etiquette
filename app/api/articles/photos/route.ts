@@ -70,7 +70,7 @@ async function lireArticles(q: string): Promise<JsonRow[]> {
 
   // Première tentative avec la nouvelle colonne photo.
   let response = await executer(
-    "articles_numero,articles_nomfr,articles_famille,photo",
+    "articles_numero,articles_nomfr,articles_famille,articles_photo",
   );
 
   if (!response.ok) {
@@ -105,13 +105,13 @@ async function lireArticles(q: string): Promise<JsonRow[]> {
 async function lirePhotoArticle(ref: string): Promise<string> {
   const { url, key, articlesTable } = config();
   const endpoint = new URL(`/rest/v1/${encodeURIComponent(articlesTable)}`, url);
-  endpoint.searchParams.set("select", "photo");
+  endpoint.searchParams.set("select", "articles_photo");
   endpoint.searchParams.set("articles_numero", `eq.${ref}`);
   endpoint.searchParams.set("limit", "1");
   const response = await fetch(endpoint, { headers: headersJson(key), cache: "no-store" });
   if (!response.ok) throw new Error("Article introuvable");
   const rows = (await response.json()) as JsonRow[];
-  return texte(rows[0]?.photo);
+  return texte(rows[0]?.articles_photo);
 }
 
 async function chargerObjetStorage(filename: string): Promise<Response> {
@@ -162,7 +162,7 @@ async function mettreAJourPhotoArticle(ref: string, filename: string): Promise<v
   const response = await fetch(endpoint, {
     method: "PATCH",
     headers: { ...headersJson(key), Prefer: "return=minimal" },
-    body: JSON.stringify({ photo: filename }),
+    body: JSON.stringify({ articles_photo: filename }),
   });
   if (!response.ok) {
     const details = await response.text();
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
         numero: texte(row.articles_numero).replace(/\.0$/, ""),
         libelle: texte(row.articles_nomfr),
         famille: texte(row.articles_famille),
-        photo: texte(row.photo),
+        photo: texte(row.articles_photo),
       }))
       .filter((row) => row.numero);
     return NextResponse.json({ articles, total: articles.length });
