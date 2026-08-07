@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Générateur d'étiquettes</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#182838">
+<link rel="icon" href="/label-ds-icon.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 :root{--ink:#182838;--soft:#607284;--line:#d7e0e7;--panel:#f4f7f9;--accent:#0f5f8c;--accent2:#e8722a}
@@ -21,6 +24,7 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
 <header>
   <h1>Générateur d'étiquettes produit</h1>
   <div class="spacer"></div>
+  <button class="btn outline" id="installPwaBtn" style="display:none" onclick="installLabelDsPwa()">Installer LABEL DS</button>
   <button class="btn outline" id="logoutBtn">Se déconnecter</button>
 </header>
 <main>
@@ -306,4 +310,5 @@ restaurerSelection();
 majPagination();
 loadActivites();
 </script>
+<script src="/pwa-register.js"></script>
 </body></html>
