@@ -20,16 +20,23 @@ function config() {
 }
 
 function headersJson(key: string) {
-  return {
+  const headers: Record<string, string> = {
     apikey: key,
-    Authorization: `Bearer ${key}`,
     Accept: "application/json",
     "Content-Type": "application/json",
     "Accept-Profile": "public",
     "Content-Profile": "public",
   };
-}
 
+  // Les nouvelles clés Supabase sb_secret_... ne sont pas des JWT et ne
+  // doivent pas être envoyées comme Bearer. Les anciennes service_role JWT
+  // commencent généralement par eyJ et peuvent encore utiliser Authorization.
+  if (key.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+
+  return headers;
+}
 function texte(value: unknown): string {
   return value === null || value === undefined ? "" : String(value).trim();
 }
@@ -111,7 +118,9 @@ async function chargerObjetStorage(filename: string): Promise<Response> {
   const { url, key, bucket } = config();
   const storageUrl = new URL(`/storage/v1/object/${encodeURIComponent(bucket)}/${encodeURIComponent(filename)}`, url);
   const response = await fetch(storageUrl, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    headers: key.startsWith("eyJ")
+      ? { apikey: key, Authorization: `Bearer ${key}` }
+      : { apikey: key },
     cache: "no-store",
   });
   if (!response.ok) return new Response(null, { status: 404 });
@@ -132,7 +141,7 @@ async function uploaderPng(filename: string, bytes: ArrayBuffer): Promise<void> 
     method: "POST",
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      ...(key.startsWith("eyJ") ? { Authorization: `Bearer ${key}` } : {}),
       "Content-Type": "image/png",
       "x-upsert": "true",
       "cache-control": "3600",
@@ -142,7 +151,7 @@ async function uploaderPng(filename: string, bytes: ArrayBuffer): Promise<void> 
   if (!response.ok) {
     const details = await response.text();
     console.error(`Upload Storage ${filename}:`, details);
-    throw new Error(`Impossible d'enregistrer ${filename} dans le bucket`);
+    throw new Error(`Storage ${filename} : ${details}`);
   }
 }
 
@@ -158,7 +167,7 @@ async function mettreAJourPhotoArticle(ref: string, filename: string): Promise<v
   if (!response.ok) {
     const details = await response.text();
     console.error(`Mise à jour photo article ${ref}:`, details);
-    throw new Error(`Impossible de mettre à jour l'article ${ref}`);
+    throw new Error(`Table articles ${ref} : ${details}`);
   }
 }
 
