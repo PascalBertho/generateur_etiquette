@@ -165,12 +165,12 @@ async function articles(
   const recherche = nettoyerRecherche(q);
   if (recherche) {
     const motif = `*${recherche}*`;
-    params.or = [
+    params.or = `(${[
       `reference_ds.ilike.${motif}`,
       `libelle.ilike.${motif}`,
       `reference_fournisseur.ilike.${motif}`,
       `famille.ilike.${motif}`,
-    ].join(",");
+    ].join(",")})`;
   }
 
   const { rows, total } = await lireRows(VIEW_ARTICLES, params, true);
@@ -222,12 +222,12 @@ async function referencesFiltrees(
   const recherche = nettoyerRecherche(q);
   if (recherche) {
     const motif = `*${recherche}*`;
-    baseParams.or = [
+    baseParams.or = `(${[
       `reference_ds.ilike.${motif}`,
       `libelle.ilike.${motif}`,
       `reference_fournisseur.ilike.${motif}`,
       `famille.ilike.${motif}`,
-    ].join(",");
+    ].join(",")})`;
   }
 
   const resultat: string[] = [];
