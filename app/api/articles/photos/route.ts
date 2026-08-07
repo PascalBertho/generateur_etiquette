@@ -42,22 +42,56 @@ function nomFichierPourRef(ref: string): string {
 
 async function lireArticles(q: string): Promise<JsonRow[]> {
   const { url, key, articlesTable } = config();
-  const endpoint = new URL(`/rest/v1/${encodeURIComponent(articlesTable)}`, url);
-  endpoint.searchParams.set("select", "articles_numero,articles_nomfr,articles_famille,photo");
-  endpoint.searchParams.set("articles_numero", "not.is.null");
-  endpoint.searchParams.set("order", "articles_numero.asc");
-  endpoint.searchParams.set("limit", "10000");
-  if (q) {
-    const safe = q.replace(/[,*()]/g, " ").trim();
-    if (safe) endpoint.searchParams.set("or", `(articles_numero.ilike.*${safe}*,articles_nomfr.ilike.*${safe}*)`);
+
+  async function executer(select: string): Promise<Response> {
+    const endpoint = new URL(`/rest/v1/${encodeURIComponent(articlesTable)}`, url);
+    endpoint.searchParams.set("select", select);
+    endpoint.searchParams.set("articles_numero", "not.is.null");
+    endpoint.searchParams.set("order", "articles_numero.asc");
+    endpoint.searchParams.set("limit", "10000");
+    if (q) {
+      const safe = q.replace(/[,*()]/g, " ").trim();
+      if (safe) {
+        endpoint.searchParams.set(
+          "or",
+          `(articles_numero.ilike.*${safe}*,articles_nomfr.ilike.*${safe}*)`,
+        );
+      }
+    }
+    return fetch(endpoint, { headers: headersJson(key), cache: "no-store" });
   }
 
-  const response = await fetch(endpoint, { headers: headersJson(key), cache: "no-store" });
+  // Première tentative avec la nouvelle colonne photo.
+  let response = await executer(
+    "articles_numero,articles_nomfr,articles_famille,photo",
+  );
+
   if (!response.ok) {
     const details = await response.text();
-    console.error("Lecture articles photos:", details);
-    throw new Error("Impossible de charger la liste des articles");
+    console.error("Lecture articles photos (avec photo):", details);
+
+    // Après l'ajout d'une colonne, PostgREST peut temporairement ne pas encore
+    // l'avoir dans son cache de schéma. On recharge alors la liste sans photo
+    // afin que la page reste utilisable.
+    const colonnePhotoInconnue =
+      /photo/i.test(details) &&
+      /(column|colonne|schema cache|does not exist|not found|PGRST)/i.test(details);
+
+    if (colonnePhotoInconnue) {
+      response = await executer(
+        "articles_numero,articles_nomfr,articles_famille",
+      );
+    } else {
+      throw new Error(`Supabase : ${details}`);
+    }
   }
+
+  if (!response.ok) {
+    const details = await response.text();
+    console.error("Lecture articles photos (sans photo):", details);
+    throw new Error(`Supabase : ${details}`);
+  }
+
   return (await response.json()) as JsonRow[];
 }
 
