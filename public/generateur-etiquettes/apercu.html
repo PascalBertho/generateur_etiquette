@@ -215,80 +215,24 @@ function normaliserArticle(a){
     secteurPhoto:a.secteurPhoto || ''
   };
 }
-const SECTEUR_PICTO_CODES = {
-  "accumulateur thermique":"ACTH",
-  "cheminees":"CHEM",
-  "cheminee":"CHEM",
-  "traitement d'eau":"EAU",
-  "traitement eau":"EAU",
-  "equipement":"EQUIP",
-  "pompe a chaleur et climatisation":"PAC",
-  "pompe a chaleur & climatisation":"PAC",
-  "ventilation":"VENTIL",
-  "acth":"ACTH",
-  "chem":"CHEM",
-  "eau":"EAU",
-  "equip":"EQUIP",
-  "pac":"PAC",
-  "ventil":"VENTIL"
-};
-
-function normaliserTexteSecteur(value){
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .replace(/’/g,"'")
-    .replace(/\s+/g,' ');
-}
-
-function codePictoSecteur(secteur){
-  return SECTEUR_PICTO_CODES[normaliserTexteSecteur(secteur)] || '';
-}
-
 function secteurPictoHtml(l){
-  // Une image explicite fournie avec l'article reste prioritaire.
+  // Une image explicite reste prioritaire si elle est fournie avec l'article.
   if(l.secteurPhoto){
     return `<img class="icon sector-picto" src="${esc(l.secteurPhoto)}" alt="Picto ${esc(l.secteur)}">`;
   }
 
-  const code = codePictoSecteur(l.secteur);
-  if(!code) return '';
+  const secteur=String(l.secteur || '').trim();
+  if(!secteur) return '';
 
-  // Le fichier apercu.html est dans /generateur-etiquettes/.
-  // Copier le dossier local "Pictos secteurs" dans :
-  // public/generateur-etiquettes/Pictos secteurs/
-  // Le chargeur essaie automatiquement plusieurs extensions.
-  const base = './Pictos secteurs/' + code;
-  const candidates = [
-    base + '.png', base + '.PNG',
-    base + '.svg', base + '.SVG',
-    base + '.jpg', base + '.JPG',
-    base + '.jpeg', base + '.JPEG',
-    base + '.webp', base + '.WEBP'
-  ];
-
+  // Le bucket pictos_secteurs est prive : l'image est servie par l'API Vercel.
+  // L'API retrouve image_path dans la table pictos_secteurs a partir de activite_ds.
+  const src='/api/pictos-secteurs?activite=' + encodeURIComponent(secteur);
   return `<img class="icon sector-picto"
-    src="${esc(candidates[0])}"
-    data-picto-candidates="${esc(JSON.stringify(candidates))}"
-    data-picto-index="0"
-    alt="Picto ${esc(l.secteur)}"
-    onerror="essayerPictoSuivant(this)">`;
+    src="${esc(src)}"
+    alt="Picto ${esc(secteur)}"
+    onerror="this.onerror=null;this.style.display='none'">`;
 }
 
-function essayerPictoSuivant(img){
-  let candidates=[];
-  try{ candidates=JSON.parse(img.dataset.pictoCandidates || '[]'); }catch(e){}
-  const next=(Number(img.dataset.pictoIndex || 0) + 1);
-  if(next < candidates.length){
-    img.dataset.pictoIndex=String(next);
-    img.src=candidates[next];
-  }else{
-    img.onerror=null;
-    img.style.display='none';
-  }
-}
 function formatPrix(v){
   if(v===null||v===undefined||v==='') return '';
   const n=Number(String(v).replace(',','.'));
