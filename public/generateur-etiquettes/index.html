@@ -34,7 +34,8 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
       <button class="btn accent" id="previewBtn">Ouvrir l'aperçu des étiquettes</button>
     </div>
     <div class="summary">
-      <label><input type="checkbox" id="selectAll"> <strong>Tous</strong></label>
+      <label><input type="checkbox" id="selectAll"> <strong>Page actuelle</strong></label>
+      <button class="btn outline" id="selectAllFilteredBtn">Sélectionner tous les résultats filtrés</button>
       <span id="selectionCount">0 article sélectionné</span>
       <button class="btn outline" id="clearSelectionBtn">Vider la sélection</button>
       <div class="pagination">
@@ -71,6 +72,7 @@ let sortKey='numero', sortDir='asc';
 const PAGE_SIZE=500;
 let apiController=null;
 let currentPage=1, totalPages=1, totalArticles=0;
+let selectionGlobaleFiltree=false;
 
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -78,6 +80,7 @@ function lireEtat(){
   try{return JSON.parse(sessionStorage.getItem(STATE_KEY)||'{}')||{}}catch{return {}}
 }
 function enregistrerEtat(){
+  await completerArticlesSelectionnes();
   const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
   sessionStorage.setItem(STATE_KEY,JSON.stringify({
     activiteDs:filterSecteur.value,
@@ -85,7 +88,8 @@ function enregistrerEtat(){
     recherche:articleSearch.value,
     page:currentPage,
     selected:[...selected],
-    selectedRows:lignesSelectionnees
+    selectedRows:lignesSelectionnees,
+    selectionGlobaleFiltree
   }));
 }
 function restaurerSelection(){
@@ -100,6 +104,7 @@ function restaurerSelection(){
     });
   }
   currentPage=Math.max(1,Number(etat.page||1));
+  selectionGlobaleFiltree=Boolean(etat.selectionGlobaleFiltree);
   restoreState=etat;
 }
 async function api(params){
@@ -120,7 +125,11 @@ async function api(params){
 function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
 async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){status.textContent='Erreur : '+e.message}}
 async function loadGroupes(restoring=false){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
+async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);
+if(selectionGlobaleFiltree){
+  articles.forEach(a=>{selected.add(String(a.numero));selectedArticles.set(String(a.numero),a)});
+}
+render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){
@@ -159,10 +168,11 @@ function majPagination(){
   firstPageBtn.disabled=currentPage<=1;prevPageBtn.disabled=currentPage<=1;nextPageBtn.disabled=currentPage>=totalPages;lastPageBtn.disabled=currentPage>=totalPages;
 }
 async function allerPage(page){const cible=Math.min(totalPages,Math.max(1,page));if(cible===currentPage)return;currentPage=cible;enregistrerEtat();await loadArticles();document.querySelector('.table-wrap')?.scrollTo({top:0,behavior:'smooth'});}
-filterSecteur.addEventListener('change',()=>{currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
-filterGroupe.addEventListener('change',()=>{currentPage=1;enregistrerEtat();loadArticles()});
-refreshBtn.addEventListener('click',()=>{currentPage=1;loadArticles()});
+filterSecteur.addEventListener('change',()=>{selectionGlobaleFiltree=false;currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
+filterGroupe.addEventListener('change',()=>{selectionGlobaleFiltree=false;currentPage=1;enregistrerEtat();loadArticles()});
+refreshBtn.addEventListener('click',()=>{selectionGlobaleFiltree=false;currentPage=1;loadArticles()});
 articleSearch.addEventListener('input',()=>{
+  selectionGlobaleFiltree=false;
   currentPage=1;
   enregistrerEtat();
   clearTimeout(timer);
@@ -185,13 +195,80 @@ articleSearch.addEventListener('keydown',(event)=>{
   currentPage=1;
   loadArticles();
 });
-selectAll.addEventListener('change',()=>{if(selectAll.checked)articles.forEach(a=>{selected.add(a.numero);selectedArticles.set(a.numero,a)});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
-clearSelectionBtn.addEventListener('click',()=>{selected.clear();selectedArticles.clear();enregistrerEtat();render()});
+selectAll.addEventListener('change',()=>{selectionGlobaleFiltree=false;if(selectAll.checked)articles.forEach(a=>{selected.add(a.numero);selectedArticles.set(a.numero,a)});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
+selectAllFilteredBtn.addEventListener('click',async()=>{
+  const terme=articleSearch.value.trim();
+  if(terme.length>0 && terme.length<3){
+    alert('Saisissez au moins 3 caractères pour utiliser la recherche.');
+    return;
+  }
+  const ancienTexte=selectAllFilteredBtn.textContent;
+  selectAllFilteredBtn.disabled=true;
+  selectAllFilteredBtn.textContent='Sélection en cours…';
+  try{
+    const params={
+      action:'references_filtrees',
+      activite_ds:filterSecteur.value,
+      groupe:filterGroupe.value
+    };
+    if(terme) params.q=terme;
+    const p=await api(params);
+    const refs=Array.isArray(p.references)?p.references.map(String):[];
+    refs.forEach(ref=>selected.add(ref));
+    articles.forEach(a=>{if(selected.has(String(a.numero)))selectedArticles.set(String(a.numero),a)});
+    selectionGlobaleFiltree=true;
+    enregistrerEtat();
+    render();
+    status.textContent=`${refs.length} résultat(s) filtré(s) sélectionné(s).`;
+  }catch(e){
+    if(e?.name!=='AbortError') alert('Erreur : '+e.message);
+  }finally{
+    selectAllFilteredBtn.disabled=false;
+    selectAllFilteredBtn.textContent=ancienTexte;
+  }
+});
+clearSelectionBtn.addEventListener('click',()=>{selectionGlobaleFiltree=false;selected.clear();selectedArticles.clear();enregistrerEtat();render()});
 firstPageBtn.addEventListener('click',()=>allerPage(1));
 prevPageBtn.addEventListener('click',()=>allerPage(currentPage-1));
 nextPageBtn.addEventListener('click',()=>allerPage(currentPage+1));
 lastPageBtn.addEventListener('click',()=>allerPage(totalPages));
-photoBtn.addEventListener('click',()=>{
+
+async function completerArticlesSelectionnes(){
+  const manquants=[...selected].filter(ref=>!selectedArticles.has(String(ref)));
+  const concurrence=8;
+  let index=0;
+  async function worker(){
+    while(index<manquants.length){
+      const ref=manquants[index++];
+      try{
+        const p=await api({action:'detail',numero:String(ref)});
+        if(p?.article){
+          const a=p.article;
+          const row={
+            numero:String(a.refds||ref),
+            refFournisseur:a.reffour||'',
+            activiteDs:a.activiteDs||'',
+            groupe:a.groupe||'',
+            famille:a.famille||'',
+            libelle:a.libelle||'',
+            secteur:a.secteur||'',
+            prix:a.prix||'',
+            barcode:a.barcode||'',
+            barcodeType:a.barcodeType||'CODE128',
+            photo:a.photo||''
+          };
+          selectedArticles.set(String(row.numero),row);
+        }
+      }catch(e){
+        console.warn('Détail article impossible',ref,e);
+      }
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(concurrence,manquants.length)},()=>worker()));
+  enregistrerEtat();
+}
+
+photoBtn.addEventListener('click',async()=>{
   articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});
   const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
   if(!lignesSelectionnees.length){
@@ -208,7 +285,7 @@ photoBtn.addEventListener('click',()=>{
   }));
   location.href='/generateur-etiquettes/photos.html';
 });
-previewBtn.addEventListener('click',()=>{articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});const rows=[...selectedArticles.values()].filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}enregistrerEtat();sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
+previewBtn.addEventListener('click',async()=>{articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});await completerArticlesSelectionnes();const rows=[...selectedArticles.values()].filter(a=>selected.has(a.numero));if(!rows.length){alert('Sélectionnez au moins un article.');return}enregistrerEtat();sessionStorage.setItem('etiquettes_selection',JSON.stringify(rows));window.open('/generateur-etiquettes/apercu.html','_blank')});
 logoutBtn.addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'})}catch{}location.href='/login'});
 restaurerSelection();
 majPagination();

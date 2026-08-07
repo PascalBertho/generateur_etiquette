@@ -206,6 +206,53 @@ async function articles(
   };
 }
 
+
+async function referencesFiltrees(
+  activiteDs: string,
+  groupe: string,
+  q: string,
+): Promise<string[]> {
+  const baseParams: Record<string, string> = {
+    select: "reference_ds",
+    order: "reference_ds.asc",
+  };
+
+  if (activiteDs && activiteDs !== "Tous") baseParams.activite_ds = `eq.${activiteDs}`;
+  if (groupe && groupe !== "Tous") baseParams.groupe = `eq.${groupe}`;
+
+  const recherche = nettoyerRecherche(q);
+  if (recherche) {
+    const motif = `*${recherche}*`;
+    baseParams.or = [
+      `reference_ds.ilike.${motif}`,
+      `libelle.ilike.${motif}`,
+      `reference_fournisseur.ilike.${motif}`,
+      `code_barre.ilike.${motif}`,
+      `famille.ilike.${motif}`,
+    ].join(",");
+  }
+
+  const resultat: string[] = [];
+  const tailleLot = 1000;
+
+  for (let offset = 0; ; offset += tailleLot) {
+    const { rows } = await lireRows(VIEW_ARTICLES, {
+      ...baseParams,
+      limit: String(tailleLot),
+      offset: String(offset),
+    });
+
+    for (const row of rows) {
+      const ref = texte(row.reference_ds).replace(/\.0$/, "");
+      if (ref) resultat.push(ref);
+    }
+
+    if (rows.length < tailleLot) break;
+  }
+
+  return [...new Set(resultat)];
+}
+
 async function detailArticle(numero: string) {
   const { rows } = await lireRows(VIEW_ARTICLES, {
     select:
@@ -260,6 +307,10 @@ export async function GET(request: NextRequest) {
     }
     if (action === "articles") {
       return NextResponse.json(await articles(activiteDs, groupe, q, page, pageSize));
+    }
+    if (action === "references_filtrees") {
+      const references = await referencesFiltrees(activiteDs, groupe, q);
+      return NextResponse.json({ references, total: references.length });
     }
     if (action === "detail") {
       if (!numero) {
