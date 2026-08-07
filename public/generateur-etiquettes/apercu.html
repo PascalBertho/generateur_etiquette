@@ -19,7 +19,7 @@
   .btn-back{background:#fff;color:#0f5f8c}
   #empty{max-width:760px;margin:40px auto;padding:25px;background:#fff;border-radius:10px;text-align:center}
   #sheets-wrap{padding:22px 0}
-  .sheet{width:210mm;min-height:297mm;margin:0 auto 22px;background:#fff;padding:8mm 4mm;display:flex;flex-direction:column;align-items:center;gap:7mm;box-shadow:0 1px 7px rgba(0,0,0,.18)}
+  .sheet{width:210mm;min-height:297mm;margin:0 auto 22px;background:#fff;padding:12mm 4mm;display:flex;flex-direction:column;align-items:center;gap:4.5mm;box-shadow:0 1px 7px rgba(0,0,0,.18)}
   .page-label{align-self:flex-start;font-size:10px;color:#617382;margin-bottom:2mm}
 
   /* ==========================================================
@@ -172,7 +172,7 @@
     html,body{width:210mm;margin:0!important;padding:0!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .toolbar{display:none!important}
     #sheets-wrap{padding:0!important;margin:0!important}
-    .sheet{width:210mm!important;height:297mm!important;min-height:297mm!important;margin:0!important;padding:8mm 4mm!important;box-shadow:none!important;page-break-after:always;break-after:page;overflow:hidden}
+    .sheet{width:210mm!important;height:297mm!important;min-height:297mm!important;margin:0!important;padding:12mm 4mm!important;gap:4.5mm!important;box-shadow:none!important;page-break-after:always;break-after:page;overflow:hidden}
     .sheet:last-child{page-break-after:auto;break-after:auto}
     .page-label{display:none!important}
     .etq{width:140mm!important;height:30mm!important;min-width:140mm!important;max-width:140mm!important;min-height:30mm!important;max-height:30mm!important;flex:0 0 30mm!important;transform:none!important;zoom:1!important}
@@ -188,7 +188,7 @@
 </header>
 <div id="sheets-wrap"></div>
 <script>
-const LABELS_PER_PAGE = 6;
+const LABELS_PER_PAGE = 8;
 const SECTEUR_COLORS = {
   "Cheminées":"#e40b22",
   "Equipement":"#45ac3a",
