@@ -282,14 +282,45 @@ function renderBarcodes(){
     }
   });
 }
+function lireSelection(){
+  const key='etiquettes_selection';
+  const sources=[];
+
+  // 1. Stockage de l'onglet d'aperçu.
+  try{sources.push(sessionStorage.getItem(key));}catch(e){}
+
+  // 2. Stockage de la fenêtre qui a ouvert l'aperçu.
+  //    C'est important en PWA / certains navigateurs où sessionStorage
+  //    n'est pas recopié automatiquement dans le nouvel onglet.
+  try{
+    if(window.opener && !window.opener.closed && window.opener.location.origin===location.origin){
+      sources.push(window.opener.sessionStorage.getItem(key));
+    }
+  }catch(e){}
+
+  // 3. Secours si une version de l'application utilise localStorage.
+  try{sources.push(localStorage.getItem(key));}catch(e){}
+
+  for(const raw of sources){
+    if(!raw) continue;
+    try{
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed) && parsed.length) return parsed;
+    }catch(e){}
+  }
+  return [];
+}
+
 function render(){
   const wrap=document.getElementById('sheets-wrap');
-  let rows=[];
-  try{rows=JSON.parse(sessionStorage.getItem('etiquettes_selection')||'[]')}catch(e){rows=[]}
-  if(!Array.isArray(rows)) rows=[];
+  const rows=lireSelection();
   document.getElementById('countInfo').textContent=rows.length+' étiquette'+(rows.length>1?'s':'');
   if(!rows.length){
-    wrap.innerHTML='<div id="empty">Aucune étiquette à afficher. Revenez à la liste, sélectionnez au moins un article puis ouvrez de nouveau l'aperçu.</div>';
+    wrap.innerHTML=`<div id="empty" style="margin:40px auto;max-width:760px;padding:24px;background:#fff;border:1px solid #d7e0e7;border-radius:10px;text-align:center;color:#445668">
+      <strong style="display:block;color:#1c2b3a;margin-bottom:8px">Aucune donnée reçue par l'aperçu.</strong>
+      Revenez à la liste des articles, sélectionnez au moins un article puis cliquez à nouveau sur <b>Aperçu</b>.<br>
+      <small style="display:block;margin-top:10px">La page d'aperçu cherche maintenant la sélection dans l'onglet courant et dans la fenêtre d'origine.</small>
+    </div>`;
     return;
   }
   const pages=Math.ceil(rows.length/LABELS_PER_PAGE);
