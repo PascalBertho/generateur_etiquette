@@ -68,7 +68,8 @@ const selectedArticles=new Map();
 let timer=null;
 let restoreState=null;
 let sortKey='numero', sortDir='asc';
-const PAGE_SIZE=5000;
+const PAGE_SIZE=500;
+let apiController=null;
 let currentPage=1, totalPages=1, totalArticles=0;
 
 
@@ -92,11 +93,25 @@ function restaurerSelection(){
   currentPage=Math.max(1,Number(etat.page||1));
   restoreState=etat;
 }
-async function api(params){const q=new URLSearchParams(params);const r=await fetch('/api/articles?'+q,{credentials:'same-origin',cache:'no-store'});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';throw new Error('Session expirée')}if(!r.ok)throw new Error(p.error||'Erreur API');return p}
+async function api(params){
+  if(apiController) apiController.abort();
+  const controller=new AbortController();
+  apiController=controller;
+  const q=new URLSearchParams(params);
+  try{
+    const r=await fetch('/api/articles?'+q,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+    const p=await r.json().catch(()=>({}));
+    if(r.status===401){location.href='/login';throw new Error('Session expirée')}
+    if(!r.ok)throw new Error(p.error||'Erreur API');
+    return p;
+  }finally{
+    if(apiController===controller) apiController=null;
+  }
+}
 function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
 async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){status.textContent='Erreur : '+e.message}}
 async function loadGroupes(restoring=false){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
+async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){
@@ -138,7 +153,29 @@ async function allerPage(page){const cible=Math.min(totalPages,Math.max(1,page))
 filterSecteur.addEventListener('change',()=>{currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
 filterGroupe.addEventListener('change',()=>{currentPage=1;enregistrerEtat();loadArticles()});
 refreshBtn.addEventListener('click',()=>{currentPage=1;loadArticles()});
-articleSearch.addEventListener('input',()=>{currentPage=1;enregistrerEtat();clearTimeout(timer);timer=setTimeout(loadArticles,300)});
+articleSearch.addEventListener('input',()=>{
+  currentPage=1;
+  enregistrerEtat();
+  clearTimeout(timer);
+  const terme=articleSearch.value.trim();
+  if(terme.length>0 && terme.length<3){
+    status.textContent='Saisissez au moins 3 caractères pour lancer la recherche.';
+    return;
+  }
+  timer=setTimeout(loadArticles,500);
+});
+articleSearch.addEventListener('keydown',(event)=>{
+  if(event.key!=='Enter') return;
+  event.preventDefault();
+  clearTimeout(timer);
+  const terme=articleSearch.value.trim();
+  if(terme.length>0 && terme.length<3){
+    status.textContent='Saisissez au moins 3 caractères pour lancer la recherche.';
+    return;
+  }
+  currentPage=1;
+  loadArticles();
+});
 selectAll.addEventListener('change',()=>{if(selectAll.checked)articles.forEach(a=>{selected.add(a.numero);selectedArticles.set(a.numero,a)});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
 clearSelectionBtn.addEventListener('click',()=>{selected.clear();selectedArticles.clear();enregistrerEtat();render()});
 firstPageBtn.addEventListener('click',()=>allerPage(1));
