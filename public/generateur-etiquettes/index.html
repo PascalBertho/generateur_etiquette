@@ -35,7 +35,6 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
     </div>
     <div class="summary">
       <button class="btn outline" id="selectPageBtn">Sélectionner les 500 affichés</button>
-      <button class="btn outline" id="selectAllFilteredBtn">Sélectionner tous les résultats filtrés</button>
       <span><strong id="filteredCount">0</strong> article(s) dans la liste</span>
       <span><strong id="displayedCount">0</strong> affiché(s)</span>
       <span id="selectionCount">0 article sélectionné</span>
@@ -74,7 +73,6 @@ let sortKey='numero', sortDir='asc';
 const PAGE_SIZE=500;
 let apiController=null;
 let currentPage=1, totalPages=1, totalArticles=0;
-let selectionGlobaleFiltree=false;
 
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -89,8 +87,7 @@ function enregistrerEtat(){
     recherche:articleSearch.value,
     page:currentPage,
     selected:[...selected],
-    selectedRows:lignesSelectionnees,
-    selectionGlobaleFiltree
+    selectedRows:lignesSelectionnees
   }));
 }
 function restaurerSelection(){
@@ -105,7 +102,6 @@ function restaurerSelection(){
     });
   }
   currentPage=Math.max(1,Number(etat.page||1));
-  selectionGlobaleFiltree=Boolean(etat.selectionGlobaleFiltree);
   restoreState=etat;
 }
 async function api(params){
@@ -126,7 +122,7 @@ async function api(params){
 function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
 async function loadActivites(){try{status.textContent='Chargement des activités…';const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){status.textContent='Erreur : '+e.message}}
 async function loadGroupes(restoring=false){try{status.textContent='Chargement des groupes…';const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){status.textContent='Erreur : '+e.message}}
-async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);if(selectionGlobaleFiltree){articles.forEach(a=>{selected.add(String(a.numero));selectedArticles.set(String(a.numero),a)})}render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
+async function loadArticles(){try{status.textContent='Chargement des articles…';const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(articleSearch.value.trim())params.q=articleSearch.value.trim();const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;const fin=totalArticles?Math.min(currentPage*PAGE_SIZE,totalArticles):0;status.textContent=totalArticles?`${debut}–${fin} sur ${totalArticles} article(s).`:'Aucun article.';majPagination();enregistrerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();status.textContent='Erreur : '+e.message}}
 
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){
@@ -151,7 +147,20 @@ function render(){
   const rows=articlesAffiches();
   articles.forEach(a=>{if(selected.has(a.numero))selectedArticles.set(a.numero,a)});
   articlesBody.innerHTML=rows.map((a,i)=>`<tr data-i="${i}" class="${selected.has(a.numero)?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(a.numero)}" ${selected.has(a.numero)?'checked':''}></td><td class="ref">${esc(a.numero)}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td><td>${photoHtml(a)}</td></tr>`).join('');
-  document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=e.target.dataset.ref;const article=articles.find(a=>a.numero===ref);if(e.target.checked){selected.add(ref);if(article)selectedArticles.set(ref,article)}else{selected.delete(ref);selectedArticles.delete(ref)}enregistrerEtat();render()}));
+  document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=e.target.dataset.ref;const article=articles.find(a=>a.numero===ref);if(e.target.checked){
+  if(selected.size>=500 && !selected.has(ref)){
+    e.target.checked=false;
+    alert('La sélection est limitée à 500 articles maximum.');
+    return;
+  }
+  selected.add(ref);
+  if(article)selectedArticles.set(ref,article);
+}else{
+  selected.delete(ref);
+  selectedArticles.delete(ref);
+}
+enregistrerEtat();
+render()}));
   rows.forEach((a,i)=>{if(!a.barcode)return;try{const val=a.barcodeType==='EAN13'&&/^\d{13}$/.test(a.barcode)?a.barcode.slice(0,12):a.barcode;JsBarcode('#bc-'+i,val,{format:a.barcodeType||'CODE128',displayValue:false,height:30,width:1,margin:2})}catch{}});
   document.querySelectorAll('th[data-sort]').forEach(th=>{th.querySelector('.sort-mark')?.remove();if(th.dataset.sort===sortKey)th.insertAdjacentHTML('beforeend',`<span class="sort-mark">${sortDir==='asc'?'▲':'▼'}</span>`)});
   updateCount();
@@ -162,7 +171,7 @@ function updateCount(){
   filteredCount.textContent=totalArticles.toLocaleString('fr-BE');
   displayedCount.textContent=articles.length.toLocaleString('fr-BE');
   selectPageBtn.textContent=`Sélectionner les ${articles.length} affichés`;
-  selectAllFilteredBtn.textContent=`Sélectionner les ${totalArticles.toLocaleString('fr-BE')} résultats filtrés`;
+} affichés`;
 }
 function majPagination(){
   const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1):0;
@@ -171,11 +180,11 @@ function majPagination(){
   firstPageBtn.disabled=currentPage<=1;prevPageBtn.disabled=currentPage<=1;nextPageBtn.disabled=currentPage>=totalPages;lastPageBtn.disabled=currentPage>=totalPages;
 }
 async function allerPage(page){const cible=Math.min(totalPages,Math.max(1,page));if(cible===currentPage)return;currentPage=cible;enregistrerEtat();await loadArticles();document.querySelector('.table-wrap')?.scrollTo({top:0,behavior:'smooth'});}
-filterSecteur.addEventListener('change',()=>{selectionGlobaleFiltree=false;currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
-filterGroupe.addEventListener('change',()=>{selectionGlobaleFiltree=false;currentPage=1;enregistrerEtat();loadArticles()});
-refreshBtn.addEventListener('click',()=>{selectionGlobaleFiltree=false;currentPage=1;loadArticles()});
+filterSecteur.addEventListener('change',()=>{currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
+filterGroupe.addEventListener('change',()=>{currentPage=1;enregistrerEtat();loadArticles()});
+refreshBtn.addEventListener('click',()=>{currentPage=1;loadArticles()});
 articleSearch.addEventListener('input',()=>{
-  selectionGlobaleFiltree=false;
+  
   currentPage=1;
   enregistrerEtat();
   clearTimeout(timer);
@@ -199,32 +208,16 @@ articleSearch.addEventListener('keydown',(event)=>{
   loadArticles();
 });
 selectPageBtn.addEventListener('click',()=>{
-  selectionGlobaleFiltree=false;
-  articles.forEach(a=>{selected.add(String(a.numero));selectedArticles.set(String(a.numero),a)});
+  selected.clear();
+  selectedArticles.clear();
+  articles.slice(0,500).forEach(a=>{
+    selected.add(String(a.numero));
+    selectedArticles.set(String(a.numero),a);
+  });
   enregistrerEtat();
   render();
 });
-selectAllFilteredBtn.addEventListener('click',async()=>{
-  const terme=articleSearch.value.trim();
-  if(terme.length>0 && terme.length<3){alert('Saisissez au moins 3 caractères pour utiliser la recherche.');return;}
-  const ancienTexte=selectAllFilteredBtn.textContent;
-  selectAllFilteredBtn.disabled=true;
-  selectAllFilteredBtn.textContent='Sélection en cours…';
-  try{
-    const params={action:'references_filtrees',activite_ds:filterSecteur.value,groupe:filterGroupe.value};
-    if(terme)params.q=terme;
-    const p=await api(params);
-    const refs=Array.isArray(p.references)?p.references.map(String):[];
-    refs.forEach(ref=>selected.add(ref));
-    articles.forEach(a=>{if(selected.has(String(a.numero)))selectedArticles.set(String(a.numero),a)});
-    selectionGlobaleFiltree=true;
-    enregistrerEtat();
-    render();
-    status.textContent=`${refs.length} résultat(s) filtré(s) sélectionné(s).`;
-  }catch(e){if(e?.name!=='AbortError')alert('Erreur : '+e.message)}
-  finally{selectAllFilteredBtn.disabled=false;selectAllFilteredBtn.textContent=ancienTexte;}
-});
-clearSelectionBtn.addEventListener('click',()=>{selectionGlobaleFiltree=false;selected.clear();selectedArticles.clear();enregistrerEtat();render()});
+clearSelectionBtn.addEventListener('click',()=>{selected.clear();selectedArticles.clear();enregistrerEtat();render()});
 firstPageBtn.addEventListener('click',()=>allerPage(1));
 prevPageBtn.addEventListener('click',()=>allerPage(currentPage-1));
 nextPageBtn.addEventListener('click',()=>allerPage(currentPage+1));
