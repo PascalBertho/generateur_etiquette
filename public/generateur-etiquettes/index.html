@@ -203,7 +203,7 @@ selectPageBtn.addEventListener('click',()=>{
   articles.forEach(a=>{selected.add(String(a.numero));selectedArticles.set(String(a.numero),a)});
   enregistrerEtat();
   render();
-});else articles.forEach(a=>{selected.delete(a.numero);selectedArticles.delete(a.numero)});enregistrerEtat();render()});
+});
 selectAllFilteredBtn.addEventListener('click',async()=>{
   const terme=articleSearch.value.trim();
   if(terme.length>0 && terme.length<3){alert('Saisissez au moins 3 caractères pour utiliser la recherche.');return;}
