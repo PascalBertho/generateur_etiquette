@@ -421,63 +421,245 @@ tbody tr.selected{background:#edf3f7}
 .cart-modal{
   position:fixed;
   inset:0;
-  background:rgba(15,31,46,.55);
+  background:rgba(9,24,38,.62);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:9999;
-  padding:20px
+  padding:18px;
 }
 .cart-modal.open{display:flex}
+
 .cart-dialog{
-  width:min(1000px,96vw);
-  max-height:86vh;
-  background:#fff;
-  border-radius:12px;
-  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  width:min(1480px,98vw);
+  height:min(900px,94vh);
+  background:#f6f7f8;
+  border-radius:14px;
+  box-shadow:0 24px 70px rgba(0,0,0,.32);
   display:flex;
   flex-direction:column;
-  overflow:hidden
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.15);
 }
+
 .cart-head{
-  position:sticky;
-  top:0;
-  z-index:5;
+  flex:0 0 96px;
+  display:grid;
+  grid-template-columns:180px minmax(280px,1fr) auto;
+  align-items:center;
+  gap:22px;
+  padding:10px 18px;
+  background:
+    radial-gradient(circle at 43% 50%,rgba(255,255,255,.035),transparent 34%),
+    linear-gradient(108deg,#182838 0%,#20374d 48%,#182838 100%);
+  color:#fff;
+  border-bottom:0;
+}
+.cart-brand{
   display:flex;
   align-items:center;
-  gap:8px;
-  padding:16px 18px;
-  background:var(--ink);
-  color:#fff;
-  border-bottom:1px solid var(--ink)
+  gap:12px;
+  min-width:0;
 }
-.cart-head h2{margin:0;font-size:18px}
-.cart-head .spacer{flex:1}
-.cart-head .muted{color:#d9d9d9}
-.cart-head .btn{background:#fff;color:var(--ink);border:1px solid #fff}
-.cart-body{overflow:auto;padding:0 18px 18px}
-.cart-table{width:100%;min-width:840px;border-collapse:collapse}
-.cart-table th,.cart-table td{
-  padding:8px;
+.cart-brand-logo{
+  width:165px;
+  height:78px;
+  object-fit:contain;
+  background:#182838;
+  mix-blend-mode:lighten;
+  display:block;
+}
+.cart-title-wrap{
+  min-width:0;
+}
+.cart-title-line{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.cart-title-line h2{
+  margin:0;
+  font-family:"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",Impact,Arial,sans-serif;
+  font-size:29px;
+  line-height:1;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:-.5px;
+}
+.cart-count-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:30px;
+  padding:5px 11px;
+  border-radius:7px;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  font-size:13px;
+  font-weight:850;
+}
+.cart-subtitle{
+  margin-top:7px;
+  font-size:12.5px;
+  color:#d7e0e7;
+}
+.cart-head-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-content:flex-end;
+}
+.cart-head-actions .btn{
+  min-height:44px;
+  padding:9px 15px;
+  font-size:13px;
+  font-weight:850;
+}
+.cart-clear-btn{
+  background:#fff!important;
+  color:var(--red)!important;
+  border:2px solid var(--red)!important;
+}
+.cart-close-btn{
+  background:var(--red)!important;
+  color:#fff!important;
+  border:1px solid var(--red)!important;
+}
+
+.cart-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+}
+
+.cart-table-wrap{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#fff;
+}
+.cart-table{
+  width:100%;
+  min-width:1000px;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:13.5px;
+}
+.cart-table th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f4f7f9;
+  color:#162435;
+  border-bottom:1px solid #d7e0e7;
+  padding:12px 14px;
+  text-align:left;
+  font-size:14px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.cart-table td{
+  padding:11px 14px;
   border-bottom:1px solid #edf1f4;
   text-align:left;
-  font-size:12px
+  font-size:13.5px;
+  vertical-align:middle;
 }
-.cart-table th{position:sticky;top:0;background:#fff;z-index:1}
-.cart-empty{padding:30px;text-align:center;color:#8998a5}
+.cart-table tbody tr:hover{background:#f8fafb}
+.cart-table .ref{
+  font-weight:900;
+  color:#182838;
+}
 .cart-remove{
-  background:var(--ink);
-  color:#fff;
-  border:1px solid var(--ink);
-  border-radius:6px;
-  padding:5px 9px;
-  font-size:11px;
-  font-weight:800;
+  background:#fff;
+  color:var(--red);
+  border:1px solid #ff9fa2;
+  border-radius:7px;
+  padding:7px 12px;
+  font-size:12px;
+  font-weight:850;
   cursor:pointer;
-  white-space:nowrap
+  white-space:nowrap;
 }
+.cart-remove:hover{
+  background:#fff4f4;
+  border-color:var(--red);
+}
+.cart-empty{
+  flex:1 1 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px;
+  text-align:center;
+  color:#7f8e9a;
+  font-size:15px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:9px;
+}
+.cart-footer{
+  flex:0 0 auto;
+  margin-top:12px;
+  min-height:66px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:11px 14px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:9px;
+}
+.cart-footer-total{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  color:#182838;
+  font-size:15px;
+  font-weight:900;
+}
+.cart-footer-icon{
+  width:42px;
+  height:42px;
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#182838;
+  color:#fff;
+  font-size:22px;
+}
+.cart-preview-btn{
+  min-width:320px;
+  min-height:46px;
+  background:#182838!important;
+  color:#fff!important;
+  border:1px solid #182838!important;
+  font-size:14px!important;
+  font-weight:900!important;
+}
+.cart-preview-btn:hover{background:#243d53!important}
 
-
+@media(max-width:900px){
+  .cart-dialog{height:96vh}
+  .cart-head{
+    grid-template-columns:120px 1fr;
+    grid-template-rows:auto auto;
+    flex-basis:140px;
+  }
+  .cart-brand-logo{width:115px;height:58px}
+  .cart-head-actions{grid-column:1/-1;justify-content:flex-end}
+  .cart-title-line h2{font-size:23px}
+  .cart-footer{align-items:stretch;flex-direction:column}
+  .cart-preview-btn{min-width:0;width:100%}
+}
 /* =========================
    BANDEAU REDUCTIBLE
    ========================= */
@@ -797,11 +979,22 @@ body.header-collapsed .table-wrap{
 <div class="cart-modal" id="cartModal" aria-hidden="true">
   <div class="cart-dialog" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
     <div class="cart-head">
-      <h2 id="cartTitle">Panier d’étiquettes</h2>
-      <span id="cartModalCount" class="muted"></span>
-      <div class="spacer"></div>
-      <button class="btn outline" id="closeCartBtn">Fermer</button>
+      <div class="cart-brand">
+        <img class="cart-brand-logo" src="/generateur-etiquettes/Logo_DS_Label.png" alt="Logo DS" onerror="this.style.display='none'">
+      </div>
+      <div class="cart-title-wrap">
+        <div class="cart-title-line">
+          <h2 id="cartTitle">Panier d’étiquettes</h2>
+          <span id="cartModalCount" class="cart-count-badge">0 article</span>
+        </div>
+        <div class="cart-subtitle">Les articles ci-dessous seront inclus dans l’aperçu et l’impression des étiquettes.</div>
+      </div>
+      <div class="cart-head-actions">
+        <button class="btn cart-clear-btn" id="cartClearBtn" type="button">🗑 &nbsp; Vider le panier</button>
+        <button class="btn cart-close-btn" id="closeCartBtn" type="button">Fermer</button>
+      </div>
     </div>
+
     <div class="cart-body" id="cartBody"></div>
   </div>
 </div>
@@ -878,9 +1071,51 @@ function retirerDuPanier(ref){ref=String(ref||'');selected.delete(ref);selectedA
 function renderCart(){
   const rows=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
   cartModalCount.textContent=rows.length+' article'+(rows.length>1?'s':'');
-  if(!rows.length){cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';return}
-  cartBody.innerHTML=`<table class="cart-table"><thead><tr><th>Réf. DS</th><th>Activité</th><th>Groupe</th><th>Famille</th><th>Libellé</th><th>Action</th></tr></thead><tbody>${rows.map(a=>`<tr><td class="ref">${esc(a.numero)}</td><td>${esc(a.activiteDs||a.secteur||'')}</td><td>${esc(a.groupe||'')}</td><td>${esc(a.famille||'')}</td><td>${esc(a.libelle||'')}</td><td><button class="cart-remove" data-ref="${esc(a.numero)}" type="button">Supprimer</button></td></tr>`).join('')}</tbody></table>`;
-  cartBody.querySelectorAll('.cart-remove').forEach(btn=>btn.addEventListener('click',()=>retirerDuPanier(btn.dataset.ref)));
+  if(!rows.length){
+    cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';
+    return;
+  }
+
+  cartBody.innerHTML=`
+    <div class="cart-table-wrap">
+      <table class="cart-table">
+        <thead>
+          <tr>
+            <th>Réf. DS</th>
+            <th>Activité DS</th>
+            <th>Groupe DS</th>
+            <th>Famille DS</th>
+            <th>Libellé</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(a=>`
+            <tr>
+              <td class="ref">${esc(a.numero)}</td>
+              <td>${esc(a.activiteDs||a.secteur||'')}</td>
+              <td>${esc(a.groupe||'')}</td>
+              <td>${esc(a.famille||'')}</td>
+              <td>${esc(a.libelle||'')}</td>
+              <td><button class="cart-remove" data-ref="${esc(a.numero)}" type="button">🗑 &nbsp; Supprimer</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cart-footer">
+      <div class="cart-footer-total">
+        <span class="cart-footer-icon">🛒</span>
+        <span>Total : ${rows.length} article${rows.length>1?'s':''}</span>
+      </div>
+      <button class="btn cart-preview-btn" id="cartPreviewBtn" type="button">◉ &nbsp; Voir l’aperçu des étiquettes</button>
+    </div>`;
+
+  cartBody.querySelectorAll('.cart-remove').forEach(btn=>
+    btn.addEventListener('click',()=>retirerDuPanier(btn.dataset.ref))
+  );
+
+  document.getElementById('cartPreviewBtn')?.addEventListener('click',()=>previewBtn.click());
 }
 function render(){majFiltresColonnes();const rows=articlesAffiches();articles.forEach(a=>{if(selected.has(String(a.numero)))selectedArticles.set(String(a.numero),a)});const visibles=new Set(rows.map(a=>String(a.numero)));for(const ref of [...listSelection]){if(!visibles.has(ref))listSelection.delete(ref)}const selectAll=document.getElementById('selectDisplayedCheck');if(selectAll){const nbSelectionnes=rows.reduce((n,a)=>n+(listSelection.has(String(a.numero))?1:0),0);selectAll.checked=rows.length>0&&nbSelectionnes===rows.length;selectAll.indeterminate=nbSelectionnes>0&&nbSelectionnes<rows.length;selectAll.disabled=rows.length===0}articlesBody.innerHTML=rows.map((a,i)=>{const ref=String(a.numero);const checked=listSelection.has(ref);const inCart=selected.has(ref);return `<tr data-i="${i}" class="${checked?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(ref)}" ${checked?'checked':''} title="Sélectionner cette ligne"></td><td class="ref">${esc(a.numero)}${inCart?' <span class="muted" title="Déjà dans le panier">✓ panier</span>':''}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td><td>${photoHtml(a)}</td></tr>`}).join('');document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=String(e.target.dataset.ref);if(e.target.checked)listSelection.add(ref);else listSelection.delete(ref);render()}));rows.forEach((a,i)=>{if(!a.barcode)return;try{const val=a.barcodeType==='EAN13'&&/^\d{13}$/.test(a.barcode)?a.barcode.slice(0,12):a.barcode;JsBarcode('#bc-'+i,val,{format:a.barcodeType||'CODE128',displayValue:false,height:30,width:1,margin:2})}catch{}});document.querySelectorAll('th[data-sort]').forEach(th=>{th.querySelector('.sort-mark')?.remove();if(th.dataset.sort===sortKey)th.insertAdjacentHTML('beforeend',`<span class="sort-mark">${sortDir==='asc'?'▲':'▼'}</span>`)});updateCount()}
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
@@ -896,6 +1131,7 @@ selectPageBtn.addEventListener('click',()=>{if(!listSelection.size){afficherEtat
 clearDisplayedBtn.addEventListener('click',()=>{clearTimeout(timer);if(apiController)apiController.abort();filterSecteur.value='Tous';filterGroupe.value='Tous';articleSearch.value='';listSelection.clear();articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();enregistrerEtat();effacerEtat()});
 clearSelectionBtn.addEventListener('click',()=>{if(!selected.size)return;if(!confirm('Vider tout le panier d’étiquettes ?'))return;selected.clear();selectedArticles.clear();sauvegarderPanier();render();renderCart()});
 viewSelectionBtn.addEventListener('click',()=>{renderCart();cartModal.classList.add('open');cartModal.setAttribute('aria-hidden','false')});
+document.getElementById('cartClearBtn')?.addEventListener('click',()=>clearSelectionBtn.click());
 closeCartBtn.addEventListener('click',()=>{cartModal.classList.remove('open');cartModal.setAttribute('aria-hidden','true')});
 cartModal.addEventListener('click',e=>{if(e.target===cartModal)closeCartBtn.click()});
 firstPageBtn.addEventListener('click',()=>allerPage(1));prevPageBtn.addEventListener('click',()=>allerPage(currentPage-1));nextPageBtn.addEventListener('click',()=>allerPage(currentPage+1));lastPageBtn.addEventListener('click',()=>allerPage(totalPages));
