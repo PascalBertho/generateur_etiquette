@@ -11,7 +11,7 @@
 <style>
 :root{--ink:#182838;--soft:#607284;--line:#d7e0e7;--panel:#f4f7f9;--accent:#0f5f8c;--accent2:#e8722a}
 *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--panel);color:var(--ink)}
-header{height:64px;padding:0 24px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:1000} header h1{font-size:19px;margin:0} header .spacer{flex:1}
+header{height:64px;padding:0 24px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.18)} header h1{font-size:19px;margin:0} header .spacer{flex:1}.app-logo{height:42px;max-width:125px;object-fit:contain;display:block}
 button,select,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14px;font-weight:650;cursor:pointer}.primary{background:var(--accent);color:#fff}.accent{background:var(--accent2);color:#fff}.outline{background:#fff;color:var(--accent);border:1px solid var(--accent)}.btn-lightgray{background:#dfe3e6!important;color:#263645!important;border:1px solid #c7cdd2!important;font-weight:700}.btn-lightgray:hover{background:#d3d8dc!important}.btn-black{background:#111!important;color:#fff!important;border:1px solid #111!important;font-weight:800}.btn-black:hover{background:#2b2b2b!important}.summary-actions{display:grid;grid-template-columns:auto auto;gap:8px 10px;align-items:center}
 main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(260px,1.4fr) auto auto auto;gap:12px;align-items:end}.field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:5px}.field select,.field input{width:100%;height:39px;border:1px solid #9fb0bd;border-radius:7px;padding:0 10px;background:#fff;color:var(--ink)}
@@ -19,11 +19,12 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
 .table-wrap{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 230px)}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;min-width:1500px}thead th{position:sticky;top:0;z-index:3;background:#eaf0f4;color:#405565;text-align:left;padding:9px 8px;border-bottom:1px solid #b9c6cf;white-space:nowrap;cursor:pointer}.sort-mark{font-size:10px;margin-left:4px;color:var(--accent)}tbody td{padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:middle}tbody tr:hover{background:#f7fafc}tbody tr.selected{background:#edf6fb}.check-col{width:34px;text-align:center}.ref{font-weight:750;color:var(--accent);white-space:nowrap}.price{text-align:right;white-space:nowrap}.barcode-text{font-family:Consolas,monospace;white-space:nowrap}.barcode-preview svg{max-width:150px;height:42px}.photo-cell{min-width:125px;white-space:nowrap;font-family:Consolas,monospace;font-size:11px}.photo-missing{font-family:inherit;font-size:11px;color:#8998a5}.muted{color:#8998a5}.action-block{display:flex;align-items:flex-start}.action-block .btn{white-space:nowrap}.tooltip{position:relative;display:inline-flex}.tooltip::after{content:attr(data-tooltip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;padding:7px 9px;border-radius:6px;background:#182838;color:#fff;font-size:11px;font-weight:500;line-height:1.35;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,.18)}.tooltip::before{content:'';position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%);border:5px solid transparent;border-top-color:#182838;opacity:0;visibility:hidden;transition:opacity .15s ease;z-index:10000}.tooltip:hover::after,.tooltip:hover::before,.tooltip:focus-within::after,.tooltip:focus-within::before{opacity:1;visibility:visible}.check-tooltip{display:inline-flex;align-items:center;justify-content:center}.check-tooltip::after{left:0;transform:none}.check-tooltip::before{left:8px;transform:none}
 @media(max-width:1000px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}}
 
-.cart-modal{position:fixed;inset:0;background:rgba(15,31,46,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}.cart-modal.open{display:flex}.cart-dialog{width:min(1000px,96vw);max-height:86vh;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}.cart-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}.cart-head h2{margin:0;font-size:18px}.cart-head .spacer{flex:1}.cart-body{overflow:auto;padding:0 18px 18px}.cart-table{width:100%;min-width:760px;border-collapse:collapse}.cart-table th,.cart-table td{padding:8px;border-bottom:1px solid #edf1f4;text-align:left;font-size:12px}.cart-table th{position:sticky;top:0;background:#fff;z-index:1}.cart-empty{padding:30px;text-align:center;color:#8998a5}.add-one{padding:5px 9px;font-size:11px;white-space:nowrap}.add-one.added{background:#eef7f1;color:#257942;border-color:#bcdcc7}.basket-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff;font-weight:700;font-size:11px}
+.cart-modal{position:fixed;inset:0;background:rgba(15,31,46,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}.cart-modal.open{display:flex}.cart-dialog{width:min(1000px,96vw);max-height:86vh;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}.cart-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:16px 18px;background:#111;color:#fff;border-bottom:1px solid #111}.cart-head h2{margin:0;font-size:18px}.cart-head .spacer{flex:1}.cart-head .muted{color:#d9d9d9}.cart-head .btn{background:#fff;color:#111;border:1px solid #fff}.cart-body{overflow:auto;padding:0 18px 18px}.cart-table{width:100%;min-width:840px;border-collapse:collapse}.cart-table th,.cart-table td{padding:8px;border-bottom:1px solid #edf1f4;text-align:left;font-size:12px}.cart-table th{position:sticky;top:0;background:#fff;z-index:1}.cart-empty{padding:30px;text-align:center;color:#8998a5}.cart-remove{background:#111;color:#fff;border:1px solid #111;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}.cart-remove:hover{background:#333}.add-one{padding:5px 9px;font-size:11px;white-space:nowrap}.add-one.added{background:#eef7f1;color:#257942;border-color:#bcdcc7}.basket-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff;font-weight:700;font-size:11px}
 </style>
 </head>
 <body>
 <header>
+  <img class="app-logo" src="/generateur-etiquettes/Logo_DS_Label.png" alt="Logo DS" onerror="this.style.display='none'">
   <h1>Générateur d'étiquettes produit</h1>
   <div class="spacer"></div>
   <button class="btn outline" id="installPwaBtn" style="display:none" onclick="installLabelDsPwa()">Installer LABEL DS</button>
@@ -107,6 +108,7 @@ let sortKey='numero', sortDir='asc';
 const PAGE_SIZE=500;
 let apiController=null;
 let currentPage=1, totalPages=1, totalArticles=0;
+let startupHasCart=false;
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function sauvegarderPanier(){try{localStorage.setItem(CART_KEY,JSON.stringify([...selectedArticles.values()].filter(a=>selected.has(String(a.numero)))))}catch(e){console.warn('Sauvegarde du panier impossible',e)}}
@@ -116,11 +118,46 @@ function afficherEtat(message,duree=0){clearTimeout(statusTimer);status.textCont
 function effacerEtat(){clearTimeout(statusTimer);status.textContent=''}
 function lireEtat(){try{return JSON.parse(sessionStorage.getItem(STATE_KEY)||'{}')||{}}catch{return {}}}
 function enregistrerEtat(){const lignesSelectionnees=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));sessionStorage.setItem(STATE_KEY,JSON.stringify({activiteDs:filterSecteur.value,groupe:filterGroupe.value,recherche:articleSearch.value,page:currentPage,selected:[...selected],selectedRows:lignesSelectionnees}))}
-function restaurerSelection(){restaurerPanier();const etat=lireEtat();if(Array.isArray(etat.selected)) etat.selected.forEach(ref=>selected.add(String(ref)));if(Array.isArray(etat.selectedRows)){etat.selectedRows.forEach(article=>{const ref=String(article?.numero||'');if(ref&&selected.has(ref))selectedArticles.set(ref,article)})}currentPage=Math.max(1,Number(etat.page||1));restoreState=etat;sauvegarderPanier()}
+function restaurerSelection(){
+  restaurerPanier();
+  startupHasCart=selected.size>0;
+  currentPage=1;
+  restoreState=null;
+  try{sessionStorage.removeItem(STATE_KEY);}catch(e){}
+  sauvegarderPanier();
+}
 async function api(params){if(apiController)apiController.abort();const controller=new AbortController();apiController=controller;const q=new URLSearchParams(params);try{const r=await fetch('/api/articles?'+q,{credentials:'same-origin',cache:'no-store',signal:controller.signal});const p=await r.json().catch(()=>({}));if(r.status===401){location.href='/login';throw new Error('Session expirée')}if(!r.ok)throw new Error(p.error||'Erreur API');return p}finally{if(apiController===controller)apiController=null}}
 function fillSelect(el,values,desired){el.innerHTML='<option value="Tous">Tous</option>';for(const v of values){const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}if(desired&&[...el.options].some(o=>o.value===desired))el.value=desired}
-async function loadActivites(){try{effacerEtat();const p=await api({action:'secteurs'});fillSelect(filterSecteur,p.secteurs||[],restoreState?.activiteDs||'Tous');await loadGroupes(true)}catch(e){afficherEtat('Erreur : '+e.message)}}
-async function loadGroupes(restoring=false){try{effacerEtat();const p=await api({action:'groupes',activite_ds:filterSecteur.value});fillSelect(filterGroupe,p.groupes||[],restoring?(restoreState?.groupe||'Tous'):'Tous');if(restoring&&restoreState?.recherche)articleSearch.value=restoreState.recherche;await loadArticles();restoreState=null}catch(e){afficherEtat('Erreur : '+e.message)}}
+async function loadActivites(){
+  try{
+    effacerEtat();
+    filterSecteur.value='Tous';
+    filterGroupe.value='Tous';
+    articleSearch.value='';
+    const p=await api({action:'secteurs'});
+    fillSelect(filterSecteur,p.secteurs||[],'Tous');
+    await loadGroupes(false,true);
+  }catch(e){afficherEtat('Erreur : '+e.message)}
+}
+async function loadGroupes(restoring=false,initialLoad=false){
+  try{
+    effacerEtat();
+    const p=await api({action:'groupes',activite_ds:filterSecteur.value});
+    fillSelect(filterGroupe,p.groupes||[],'Tous');
+    if(initialLoad && !startupHasCart){
+      articles=[];
+      totalArticles=0;
+      totalPages=1;
+      currentPage=1;
+      render();
+      majPagination();
+      afficherEtat('Sélectionnez des filtres ou lancez une recherche pour afficher les articles.',3500);
+      return;
+    }
+    currentPage=1;
+    await loadArticles();
+  }catch(e){afficherEtat('Erreur : '+e.message)}
+}
 async function loadArticles(){try{const terme=articleSearch.value.trim();afficherEtat(terme?'Recherche en cours…':'Chargement en cours…');const params={action:'articles',activite_ds:filterSecteur.value,groupe:filterGroupe.value,page:String(currentPage),page_size:String(PAGE_SIZE)};if(terme)params.q=terme;const p=await api(params);articles=Array.isArray(p.articles)?p.articles:[];totalArticles=Number(p.total||0);totalPages=Math.max(1,Number(p.totalPages||1));currentPage=Math.min(Math.max(1,Number(p.page||currentPage)),totalPages);render();majPagination();enregistrerEtat();if(totalArticles===0)afficherEtat('Pas de résultats');else effacerEtat()}catch(e){if(e?.name==='AbortError')return;articles=[];totalArticles=0;totalPages=1;currentPage=1;render();majPagination();afficherEtat('Erreur : '+e.message)}}
 function valeurColonne(a,key){return String(a?.[key]??'').trim()}
 function articlesAffiches(){let rows=articles.slice();return rows.sort((a,b)=>{let av=valeurColonne(a,sortKey),bv=valeurColonne(b,sortKey);if(sortKey==='prix'){av=parseFloat(av.replace(',','.'))||0;bv=parseFloat(bv.replace(',','.'))||0;return(av-bv)*(sortDir==='asc'?1:-1)}return av.localeCompare(bv,'fr',{numeric:true,sensitivity:'base'})*(sortDir==='asc'?1:-1)})}
@@ -128,7 +165,13 @@ function majFiltresColonnes(){}
 function photoHtml(a){const nom=String(a.photo||'').trim();return nom?`<div class="photo-cell">${esc(nom)}</div>`:`<span class="photo-missing">Aucune</span>`}
 function ajouterAuPanier(article){if(!article)return;const ref=String(article.numero||'');if(!ref)return;if(selected.size>=500&&!selected.has(ref)){alert('La sélection est limitée à 500 articles maximum.');return}selected.add(ref);selectedArticles.set(ref,article);sauvegarderPanier();updateCount()}
 function retirerDuPanier(ref){ref=String(ref||'');selected.delete(ref);selectedArticles.delete(ref);sauvegarderPanier();updateCount();renderCart()}
-function renderCart(){const rows=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));cartModalCount.textContent=rows.length+' article'+(rows.length>1?'s':'');if(!rows.length){cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';return}cartBody.innerHTML=`<table class="cart-table"><thead><tr><th>Réf. DS</th><th>Activité</th><th>Groupe</th><th>Famille</th><th>Libellé</th></tr></thead><tbody>${rows.map(a=>`<tr><td class="ref">${esc(a.numero)}</td><td>${esc(a.activiteDs||a.secteur||'')}</td><td>${esc(a.groupe||'')}</td><td>${esc(a.famille||'')}</td><td>${esc(a.libelle||'')}</td></tr>`).join('')}</tbody></table>`;}
+function renderCart(){
+  const rows=[...selectedArticles.values()].filter(a=>selected.has(String(a.numero)));
+  cartModalCount.textContent=rows.length+' article'+(rows.length>1?'s':'');
+  if(!rows.length){cartBody.innerHTML='<div class="cart-empty">Aucun article dans le panier.</div>';return}
+  cartBody.innerHTML=`<table class="cart-table"><thead><tr><th>Réf. DS</th><th>Activité</th><th>Groupe</th><th>Famille</th><th>Libellé</th><th>Action</th></tr></thead><tbody>${rows.map(a=>`<tr><td class="ref">${esc(a.numero)}</td><td>${esc(a.activiteDs||a.secteur||'')}</td><td>${esc(a.groupe||'')}</td><td>${esc(a.famille||'')}</td><td>${esc(a.libelle||'')}</td><td><button class="cart-remove" data-ref="${esc(a.numero)}" type="button">Supprimer</button></td></tr>`).join('')}</tbody></table>`;
+  cartBody.querySelectorAll('.cart-remove').forEach(btn=>btn.addEventListener('click',()=>retirerDuPanier(btn.dataset.ref)));
+}
 function render(){majFiltresColonnes();const rows=articlesAffiches();articles.forEach(a=>{if(selected.has(String(a.numero)))selectedArticles.set(String(a.numero),a)});const visibles=new Set(rows.map(a=>String(a.numero)));for(const ref of [...listSelection]){if(!visibles.has(ref))listSelection.delete(ref)}const selectAll=document.getElementById('selectDisplayedCheck');if(selectAll){const nbSelectionnes=rows.reduce((n,a)=>n+(listSelection.has(String(a.numero))?1:0),0);selectAll.checked=rows.length>0&&nbSelectionnes===rows.length;selectAll.indeterminate=nbSelectionnes>0&&nbSelectionnes<rows.length;selectAll.disabled=rows.length===0}articlesBody.innerHTML=rows.map((a,i)=>{const ref=String(a.numero);const checked=listSelection.has(ref);const inCart=selected.has(ref);return `<tr data-i="${i}" class="${checked?'selected':''}"><td class="check-col"><input class="row-check" type="checkbox" data-ref="${esc(ref)}" ${checked?'checked':''} title="Sélectionner cette ligne"></td><td class="ref">${esc(a.numero)}${inCart?' <span class="muted" title="Déjà dans le panier">✓ panier</span>':''}</td><td>${esc(a.refFournisseur)||'<span class="muted">—</span>'}</td><td>${esc(a.groupe)||'—'}</td><td>${esc(a.famille)||'—'}</td><td>${esc(a.libelle)||'—'}</td><td>${esc(a.secteur)||'—'}</td><td class="price">${a.prix?esc(a.prix)+' €':'—'}</td><td class="barcode-text">${esc(a.barcode)||'—'}</td><td class="barcode-preview"><svg id="bc-${i}"></svg></td><td>${photoHtml(a)}</td></tr>`}).join('');document.querySelectorAll('.row-check').forEach(cb=>cb.addEventListener('change',e=>{const ref=String(e.target.dataset.ref);if(e.target.checked)listSelection.add(ref);else listSelection.delete(ref);render()}));rows.forEach((a,i)=>{if(!a.barcode)return;try{const val=a.barcodeType==='EAN13'&&/^\d{13}$/.test(a.barcode)?a.barcode.slice(0,12):a.barcode;JsBarcode('#bc-'+i,val,{format:a.barcodeType||'CODE128',displayValue:false,height:30,width:1,margin:2})}catch{}});document.querySelectorAll('th[data-sort]').forEach(th=>{th.querySelector('.sort-mark')?.remove();if(th.dataset.sort===sortKey)th.insertAdjacentHTML('beforeend',`<span class="sort-mark">${sortDir==='asc'?'▲':'▼'}</span>`)});updateCount()}
 document.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir='asc'}render()}));
 document.getElementById('selectDisplayedCheck').addEventListener('change',e=>{const rows=articlesAffiches();if(e.target.checked){rows.forEach(a=>listSelection.add(String(a.numero)))}else{rows.forEach(a=>listSelection.delete(String(a.numero)))}render()});
