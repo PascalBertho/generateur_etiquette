@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import des photos produits</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#1c2b3a}
+  header{background:#1c2b3a;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:12px}
+  header h1{font-size:18px;margin:0;margin-right:auto}
+  main{max-width:1180px;margin:22px auto;padding:0 18px 30px}
+  .card{background:#fff;border:1px solid #d9e2e8;border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .warning{background:#fff5e8;border:1px solid #f0b66f;color:#744410}
+  .warning strong{display:block;margin-bottom:6px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{border:0;border-radius:7px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-primary{background:#0f5f8c;color:#fff}
+  .btn-import{background:#e8722a;color:#fff}
+  .btn-secondary{background:#e8eef2;color:#1c2b3a}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .path{font-family:Consolas,monospace;background:#f1f4f6;padding:3px 6px;border-radius:4px}
+  .small{font-size:12px;color:#617382}
+  #selectedInfo{font-size:13px;font-weight:700}
+  .stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
+  .stat{background:#f6f8fa;border:1px solid #e1e7eb;border-radius:8px;padding:11px}
+  .stat b{display:block;font-size:21px;margin-bottom:3px}
+  .stat span{font-size:11px;color:#607383}
+  .table-wrap{overflow:auto;max-height:62vh;border:1px solid #d9e2e8;border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+  th{position:sticky;top:0;background:#1c2b3a;color:#fff;text-align:left;padding:9px;z-index:2}
+  td{padding:8px 9px;border-bottom:1px solid #e6ebee;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfc}
+  .status{font-weight:700}
+  .s-new{color:#067647}
+  .s-existing{color:#52606b}
+  .s-link{color:#0f5f8c}
+  .s-ambiguous{color:#b54708}
+  .s-none{color:#8b1e1e}
+  .s-error{color:#b42318}
+  #progress{margin-top:10px;font-size:13px;font-weight:700}
+  progress{width:100%;height:18px;margin-top:7px}
+  @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Import des photos produits</h1>
+  <button class="btn btn-secondary" onclick="history.back()">Retour</button>
+</header>
+
+<main>
+  <section class="card warning">
+    <strong>Accès réseau / VPN requis</strong>
+    Les photos produits se trouvent dans
+    <span class="path">Q:\Commun\Generateur Etiquette\Photos produits</span>.
+    Avant de continuer, vérifiez que vous êtes connecté au réseau de l'entreprise
+    ou au VPN et que le lecteur <b>Q:</b> est accessible.
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <label class="btn btn-primary" for="folderInput">Sélectionner le dossier Photos produits</label>
+      <input id="folderInput" type="file" accept=".png,image/png" multiple webkitdirectory directory hidden>
+      <button id="analyzeBtn" class="btn btn-secondary" disabled>Analyser</button>
+      <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
+      <span id="selectedInfo">Aucun dossier sélectionné</span>
+    </div>
+    <p class="small">
+      Les fichiers déjà présents dans le bucket <b>articles_photo</b> ne sont jamais remplacés.
+      Les fichiers du lecteur Q: ne sont jamais modifiés ni supprimés.
+    </p>
+    <div id="progress" hidden></div>
+    <progress id="progressBar" value="0" max="100" hidden></progress>
+  </section>
+
+  <section id="statsCard" class="card" hidden>
+    <div class="stats">
+      <div class="stat"><b id="stFiles">0</b><span>PNG sélectionnés</span></div>
+      <div class="stat"><b id="stNew">0</b><span>Nouveaux uploads</span></div>
+      <div class="stat"><b id="stExisting">0</b><span>Déjà présents</span></div>
+      <div class="stat"><b id="stLink">0</b><span>DB à lier seulement</span></div>
+      <div class="stat"><b id="stAmbiguous">0</b><span>Ambigus</span></div>
+      <div class="stat"><b id="stNone">0</b><span>Sans correspondance</span></div>
+    </div>
+  </section>
+
+  <section id="tableCard" class="card" hidden>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Photo source Q:</th>
+            <th>Article</th>
+            <th>Fichier bucket</th>
+            <th>Correspondance</th>
+            <th>Action</th>
+            <th>Détail</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const API_URL='/api/photos/import';
+const BUCKET='articles_photo';
+
+let selectedFiles=[];
+let fileByName=new Map();
+let analysisRows=[];
+let supabaseClient=null;
+
+const folderInput=document.getElementById('folderInput');
+const analyzeBtn=document.getElementById('analyzeBtn');
+const importBtn=document.getElementById('importBtn');
+
+function esc(v){
+  return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+folderInput.addEventListener('change',()=>{
+  selectedFiles=[...folderInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
+  fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
+  document.getElementById('selectedInfo').textContent=
+    selectedFiles.length ? selectedFiles.length+' fichier(s) PNG sélectionné(s)' : 'Aucun PNG sélectionné';
+  analyzeBtn.disabled=selectedFiles.length===0;
+  importBtn.disabled=true;
+  document.getElementById('statsCard').hidden=true;
+  document.getElementById('tableCard').hidden=true;
+});
+
+async function api(payload){
+  const r=await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error||('Erreur HTTP '+r.status));
+  return data;
+}
+
+function statusLabel(row){
+  switch(row.action){
+    case 'upload': return ['À importer','s-new'];
+    case 'existing': return ['Déjà présente — non remplacée','s-existing'];
+    case 'link-only': return ['Déjà présente — liaison DB uniquement','s-link'];
+    case 'ambiguous': return ['Ambiguë — ignorée','s-ambiguous'];
+    case 'no-match': return ['Sans article — ignorée','s-none'];
+    default: return [row.action||'',''];
+  }
+}
+
+function renderRows(){
+  const body=document.getElementById('resultBody');
+  body.innerHTML=analysisRows.map(r=>{
+    const [label,cls]=statusLabel(r);
+    return `<tr>
+      <td>${esc(r.sourceName||'')}</td>
+      <td>${esc(r.articleNumero||'')}</td>
+      <td>${esc(r.targetName||'')}</td>
+      <td>${esc(r.matchType||'')}</td>
+      <td class="status ${cls}">${esc(label)}</td>
+      <td>${esc(r.detail||'')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats(){
+  const count=a=>analysisRows.filter(r=>r.action===a).length;
+  document.getElementById('stFiles').textContent=selectedFiles.length;
+  document.getElementById('stNew').textContent=count('upload');
+  document.getElementById('stExisting').textContent=count('existing');
+  document.getElementById('stLink').textContent=count('link-only');
+  document.getElementById('stAmbiguous').textContent=count('ambiguous');
+  document.getElementById('stNone').textContent=count('no-match');
+  document.getElementById('statsCard').hidden=false;
+  document.getElementById('tableCard').hidden=false;
+  importBtn.disabled=(count('upload')+count('link-only'))===0;
+}
+
+analyzeBtn.addEventListener('click',async()=>{
+  analyzeBtn.disabled=true;
+  importBtn.disabled=true;
+  try{
+    const data=await api({
+      action:'analyze',
+      files:selectedFiles.map(f=>({name:f.name,size:f.size,lastModified:f.lastModified}))
+    });
+    analysisRows=data.rows||[];
+    renderRows();
+    renderStats();
+  }catch(e){
+    alert('Analyse impossible : '+e.message);
+  }finally{
+    analyzeBtn.disabled=false;
+  }
+});
+
+async function ensureSupabaseClient(config){
+  if(supabaseClient) return supabaseClient;
+  if(!window.supabase) throw new Error('Bibliothèque Supabase indisponible.');
+  supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
+  return supabaseClient;
+}
+
+importBtn.addEventListener('click',async()=>{
+  const todo=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only');
+  if(!todo.length) return;
+
+  importBtn.disabled=true;
+  analyzeBtn.disabled=true;
+
+  const progress=document.getElementById('progress');
+  const bar=document.getElementById('progressBar');
+  progress.hidden=false;
+  bar.hidden=false;
+  bar.max=todo.length;
+  bar.value=0;
+
+  let ok=0, skipped=0, errors=0;
+
+  for(let i=0;i<todo.length;i++){
+    const row=todo[i];
+    progress.textContent=`Traitement ${i+1}/${todo.length} — ${row.articleNumero || row.sourceName}`;
+
+    try{
+      if(row.action==='link-only'){
+        await api({
+          action:'confirm',
+          articleNumero:row.articleNumero,
+          targetName:row.targetName
+        });
+        row.action='existing';
+        row.detail='Photo déjà dans le bucket ; colonne articles_photo mise à jour.';
+        ok++;
+      }else{
+        const prep=await api({
+          action:'prepare',
+          articleNumero:row.articleNumero,
+          sourceName:row.sourceName,
+          targetName:row.targetName
+        });
+
+        if(prep.alreadyExists){
+          // Double contrôle côté serveur : ne jamais écraser.
+          await api({
+            action:'confirm',
+            articleNumero:row.articleNumero,
+            targetName:row.targetName
+          });
+          row.action='existing';
+          row.detail='Photo apparue entre-temps dans le bucket ; non remplacée.';
+          skipped++;
+        }else{
+          const file=fileByName.get(String(row.sourceName).toLowerCase());
+          if(!file) throw new Error('Fichier source introuvable dans la sélection.');
+
+          const client=await ensureSupabaseClient(prep);
+          const {error:uploadError}=await client.storage
+            .from(BUCKET)
+            .uploadToSignedUrl(prep.path,prep.token,file,{
+              contentType:'image/png',
+              cacheControl:'3600'
+            });
+
+          if(uploadError) throw uploadError;
+
+          await api({
+            action:'confirm',
+            articleNumero:row.articleNumero,
+            targetName:row.targetName
+          });
+
+          row.action='existing';
+          row.detail='Importée avec succès ; fichier source Q: conservé.';
+          ok++;
+        }
+      }
+    }catch(e){
+      row.action='error';
+      row.detail='ERREUR : '+(e.message||String(e));
+      errors++;
+    }
+
+    bar.value=i+1;
+    renderRows();
+  }
+
+  progress.textContent=`Terminé — ${ok} traité(s), ${skipped} déjà présent(s), ${errors} erreur(s).`;
+  analyzeBtn.disabled=false;
+
+  // Réanalyse recommandée pour refléter exactement l'état du bucket.
+  setTimeout(()=>{ analyzeBtn.click(); },500);
+});
+</script>
+</body>
+</html>
