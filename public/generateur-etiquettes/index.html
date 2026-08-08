@@ -601,6 +601,106 @@ body.header-collapsed .table-wrap{
   #refreshBtn{grid-column:1/-1}
   .table-wrap{max-height:calc(100vh - 545px)}
 }
+
+/* ===== Ajustements demandes 08/08 ===== */
+body{padding-top:205px}
+
+header{
+  height:205px;
+  grid-template-columns:305px minmax(430px,1fr) 520px;
+  grid-template-rows:74px 108px;
+  column-gap:18px;
+  padding:8px 18px 8px 0;
+}
+
+.app-logo{
+  width:292px;
+  height:184px;
+  margin-left:0;
+  mix-blend-mode:lighten;
+  background:#182838;
+}
+
+header h1{
+  font-size:32px;
+  line-height:1;
+  letter-spacing:-1px;
+  max-width:520px;
+  white-space:nowrap;
+}
+header h1::after{
+  margin-top:8px;
+  font-size:18px;
+  white-space:normal;
+}
+
+.header-nav{height:70px}
+.header-nav a{font-size:11px;gap:4px}
+.header-nav .nav-icon{font-size:26px;min-height:27px}
+
+.header-actions{
+  grid-template-rows:46px 46px;
+  gap:7px 9px;
+  padding-top:6px;
+}
+.header-actions .btn{
+  min-height:46px;
+  padding:6px 10px;
+  font-size:11px;
+  line-height:1.12;
+}
+
+#logoutBtn{
+  font-size:13px!important;
+  font-weight:700!important;
+  color:rgba(255,255,255,.86)!important;
+  top:5px;
+  right:12px;
+}
+
+.field label{
+  font-size:14px;
+  margin-bottom:6px;
+}
+
+.summary{
+  font-size:14px;
+  gap:16px;
+}
+.summary strong{font-size:15px}
+
+table{font-size:13.5px}
+thead th{
+  font-size:14px;
+  padding:11px 9px;
+}
+tbody td{
+  font-size:13.5px;
+  padding:10px 9px;
+}
+
+.table-wrap{max-height:calc(100vh - 335px)}
+
+body.header-collapsed .table-wrap{
+  max-height:calc(100vh - 202px);
+}
+
+@media(max-width:1250px){
+  body{padding-top:195px}
+  header{
+    height:195px;
+    grid-template-columns:280px minmax(390px,1fr) 470px;
+    grid-template-rows:70px 103px;
+    column-gap:14px;
+    padding-left:0;
+  }
+  .app-logo{width:268px;height:174px}
+  header h1{font-size:29px}
+  header h1::after{font-size:17px}
+  .header-actions .btn{font-size:10.5px}
+  .table-wrap{max-height:calc(100vh - 325px)}
+}
+
 </style>
 
 </head>
