@@ -1,15 +1,14 @@
-const CACHE_NAME = "label-ds-v1";
-const APP_SHELL = [
-  "/generateur-etiquettes/",
+const CACHE_NAME = "label-ds-v2";
+const STATIC_ASSETS = [
   "/manifest.webmanifest",
-  "/label-ds-icon.svg"
+  "/label-ds-192.png",
+  "/label-ds-512.png",
+  "/label-ds-maskable-512.png"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .catch(() => undefined)
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
@@ -18,9 +17,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       )
     )
   );
@@ -33,44 +30,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Ne jamais mettre en cache les appels API/auth.
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  // Ne jamais mettre les API en cache.
+  if (url.pathname.startsWith("/api/")) return;
 
-  // Navigation : priorité au réseau pour toujours récupérer la version récente.
+  // Navigation : réseau d'abord.
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() =>
-          caches.match(event.request).then(
-            (cached) => cached || caches.match("/generateur-etiquettes/")
-          )
-        )
+      fetch(event.request).catch(() => caches.match("/generateur-etiquettes/"))
     );
     return;
   }
 
-  // Ressources statiques : cache d'abord, puis réseau.
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type === "opaque") {
-          return response;
-        }
-
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      });
+      return cached || fetch(event.request);
     })
   );
 });
