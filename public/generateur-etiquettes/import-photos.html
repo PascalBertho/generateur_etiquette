@@ -61,17 +61,28 @@
 
   <section class="card">
     <div class="actions">
-      <label class="btn btn-primary" for="folderInput">Sélectionner le dossier Photos produits</label>
+      <label class="btn btn-primary" for="folderInput">Accéder aux photos réseau Q:</label>
       <input id="folderInput" type="file" accept=".png,image/png" multiple webkitdirectory directory hidden>
-      <button id="analyzeBtn" class="btn btn-secondary" disabled>Analyser</button>
       <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
-      <span id="selectedInfo">Aucun dossier sélectionné</span>
     </div>
+
+    <div style="margin-top:12px;padding:12px 14px;border:1px solid #d7e0e7;border-radius:8px;background:#f7fafc">
+      <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossier attendu</div>
+      <div class="path">Q:\Commun\Generateur Etiquette\Photos produits</div>
+      <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:700">
+        En attente d'accès au dossier réseau.
+      </div>
+      <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
+        Cliquez sur « Accéder aux photos réseau Q: », puis ouvrez le dossier indiqué ci-dessus.
+        L'analyse démarre automatiquement dès que le dossier est validé.
+      </div>
+    </div>
+
     <p class="small">
       Les fichiers déjà présents dans le bucket <b>articles_photo</b> ne sont jamais remplacés.
       Les fichiers du lecteur Q: ne sont jamais modifiés ni supprimés.
     </p>
-    <div id="progress" hidden></div>
+    <div id="progress" style="margin-top:10px;font-size:13px;font-weight:700"></div>
     <progress id="progressBar" value="0" max="100" hidden></progress>
   </section>
 
@@ -115,77 +126,31 @@ let analysisRows=[];
 let supabaseClient=null;
 
 const folderInput=document.getElementById('folderInput');
-const analyzeBtn=document.getElementById('analyzeBtn');
 const importBtn=document.getElementById('importBtn');
+const progress=document.getElementById('progress');
+const progressBar=document.getElementById('progressBar');
+const userInfo=document.getElementById('userInfo');
 
 function esc(v){
   return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-folderInput.addEventListener('change',()=>{
-  selectedFiles=[...folderInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
-  fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
-  document.getElementById('selectedInfo').textContent=
-    selectedFiles.length ? selectedFiles.length+' fichier(s) PNG sélectionné(s)' : 'Aucun PNG sélectionné';
-  analyzeBtn.disabled=selectedFiles.length===0;
+async function analyzeSelectedFolder(){
   importBtn.disabled=true;
   document.getElementById('statsCard').hidden=true;
   document.getElementById('tableCard').hidden=true;
-});
 
-async function api(payload){
-  const r=await fetch(API_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  });
-  const data=await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(data.error||('Erreur HTTP '+r.status));
-  return data;
-}
-
-function statusLabel(row){
-  switch(row.action){
-    case 'upload': return ['À importer','s-new'];
-    case 'existing': return ['Déjà présente — non remplacée','s-existing'];
-    case 'link-only': return ['Déjà présente — liaison DB uniquement','s-link'];
-    case 'ambiguous': return ['Ambiguë — ignorée','s-ambiguous'];
-    case 'no-match': return ['Sans article — ignorée','s-none'];
-    default: return [row.action||'',''];
+  if(!selectedFiles.length){
+    document.getElementById('selectedInfo').textContent='Aucun fichier PNG détecté.';
+    userInfo.textContent='Vérifiez que vous avez bien ouvert le dossier Q:\\Commun\\Generateur Etiquette\\Photos produits et que le VPN / lecteur Q: est accessible.';
+    progress.textContent='';
+    return;
   }
-}
 
-function renderRows(){
-  const body=document.getElementById('resultBody');
-  body.innerHTML=analysisRows.map(r=>{
-    const [label,cls]=statusLabel(r);
-    return `<tr>
-      <td>${esc(r.sourceName||'')}</td>
-      <td>${esc(r.articleNumero||'')}</td>
-      <td>${esc(r.targetName||'')}</td>
-      <td>${esc(r.matchType||'')}</td>
-      <td class="status ${cls}">${esc(label)}</td>
-      <td>${esc(r.detail||'')}</td>
-    </tr>`;
-  }).join('');
-}
+  document.getElementById('selectedInfo').textContent=selectedFiles.length+' fichier(s) PNG détecté(s).';
+  userInfo.textContent='Analyse en cours : recherche des correspondances avec les articles et contrôle du bucket Supabase…';
+  progress.textContent='Analyse en cours…';
 
-function renderStats(){
-  const count=a=>analysisRows.filter(r=>r.action===a).length;
-  document.getElementById('stFiles').textContent=selectedFiles.length;
-  document.getElementById('stNew').textContent=count('upload');
-  document.getElementById('stExisting').textContent=count('existing');
-  document.getElementById('stLink').textContent=count('link-only');
-  document.getElementById('stAmbiguous').textContent=count('ambiguous');
-  document.getElementById('stNone').textContent=count('no-match');
-  document.getElementById('statsCard').hidden=false;
-  document.getElementById('tableCard').hidden=false;
-  importBtn.disabled=(count('upload')+count('link-only'))===0;
-}
-
-analyzeBtn.addEventListener('click',async()=>{
-  analyzeBtn.disabled=true;
-  importBtn.disabled=true;
   try{
     const data=await api({
       action:'analyze',
@@ -194,11 +159,40 @@ analyzeBtn.addEventListener('click',async()=>{
     analysisRows=data.rows||[];
     renderRows();
     renderStats();
+
+    const aImporter=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only').length;
+    const deja=analysisRows.filter(r=>r.action==='existing').length;
+    const ambigus=analysisRows.filter(r=>r.action==='ambiguous').length;
+    const sans=analysisRows.filter(r=>r.action==='no-match').length;
+
+    progress.textContent='Analyse terminée.';
+    userInfo.textContent=
+      aImporter+' élément(s) à traiter, '+
+      deja+' déjà présent(s), '+
+      ambigus+' ambigu(s), '+
+      sans+' sans correspondance. '+
+      (aImporter ? 'Vous pouvez maintenant cliquer sur « Lancer l’import ».' : 'Aucun import n’est nécessaire.');
+
+    importBtn.disabled=aImporter===0;
   }catch(e){
-    alert('Analyse impossible : '+e.message);
-  }finally{
-    analyzeBtn.disabled=false;
+    progress.textContent='Erreur pendant l’analyse.';
+    userInfo.textContent='Analyse impossible : '+e.message;
+    importBtn.disabled=true;
   }
+}
+
+folderInput.addEventListener('change',async()=>{
+  selectedFiles=[...folderInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
+  fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
+
+  if(!selectedFiles.length){
+    document.getElementById('selectedInfo').textContent='Aucun PNG trouvé dans le dossier sélectionné.';
+    userInfo.textContent='Vérifiez le VPN et l’accès au lecteur Q:, puis ouvrez exactement Q:\\Commun\\Generateur Etiquette\\Photos produits.';
+    importBtn.disabled=true;
+    return;
+  }
+
+  await analyzeSelectedFolder();
 });
 
 async function ensureSupabaseClient(config){
@@ -213,14 +207,10 @@ importBtn.addEventListener('click',async()=>{
   if(!todo.length) return;
 
   importBtn.disabled=true;
-  analyzeBtn.disabled=true;
 
-  const progress=document.getElementById('progress');
-  const bar=document.getElementById('progressBar');
-  progress.hidden=false;
-  bar.hidden=false;
-  bar.max=todo.length;
-  bar.value=0;
+  progressBar.hidden=false;
+  progressBar.max=todo.length;
+  progressBar.value=0;
 
   let ok=0, skipped=0, errors=0;
 
@@ -287,15 +277,14 @@ importBtn.addEventListener('click',async()=>{
       errors++;
     }
 
-    bar.value=i+1;
+    progressBar.value=i+1;
     renderRows();
   }
 
   progress.textContent=`Terminé — ${ok} traité(s), ${skipped} déjà présent(s), ${errors} erreur(s).`;
-  analyzeBtn.disabled=false;
 
   // Réanalyse recommandée pour refléter exactement l'état du bucket.
-  setTimeout(()=>{ analyzeBtn.click(); },500);
+  setTimeout(()=>{ analyzeSelectedFolder(); },500);
 });
 </script>
 </body>
