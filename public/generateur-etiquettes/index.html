@@ -905,6 +905,68 @@ body.header-collapsed #logoutBtn{
   color:rgba(255,255,255,.92)!important;
 }
 
+
+/* ===== Installation LABEL DS sur le PC ===== */
+.pwa-install-banner{
+  position:fixed;
+  left:50%;
+  bottom:22px;
+  transform:translateX(-50%);
+  z-index:12000;
+  width:min(760px,calc(100vw - 32px));
+  display:none;
+  align-items:center;
+  gap:16px;
+  padding:15px 16px;
+  border:1px solid #d8e0e6;
+  border-radius:12px;
+  background:#fff;
+  color:#182838;
+  box-shadow:0 14px 40px rgba(15,31,46,.22);
+}
+.pwa-install-banner.visible{display:flex}
+.pwa-install-icon{
+  flex:0 0 46px;
+  width:46px;
+  height:46px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#182838;
+  color:#fff;
+  font-size:22px;
+}
+.pwa-install-copy{flex:1 1 auto;min-width:0}
+.pwa-install-title{font-size:15px;font-weight:900;margin-bottom:3px}
+.pwa-install-text{font-size:12.5px;line-height:1.4;color:#647588}
+.pwa-install-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pwa-install-now{
+  border:0;
+  border-radius:7px;
+  padding:10px 14px;
+  background:#e1262b;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.pwa-install-later{
+  border:1px solid #b9c5ce;
+  border-radius:7px;
+  padding:10px 14px;
+  background:#fff;
+  color:#182838;
+  font-size:12px;
+  font-weight:850;
+  cursor:pointer;
+}
+@media(max-width:700px){
+  .pwa-install-banner{align-items:flex-start;flex-wrap:wrap}
+  .pwa-install-actions{width:100%}
+  .pwa-install-now,.pwa-install-later{flex:1 1 160px}
+}
+
 </style>
 
 </head>
@@ -1230,6 +1292,77 @@ try{
   }
 }catch(e){}
 </script>
+
+<div class="pwa-install-banner" id="pwaInstallBanner" role="dialog" aria-live="polite" aria-label="Installer LABEL DS">
+  <div class="pwa-install-icon">⬇</div>
+  <div class="pwa-install-copy">
+    <div class="pwa-install-title">Installer LABEL DS sur ce PC</div>
+    <div class="pwa-install-text">
+      Accédez directement au générateur depuis votre bureau ou le menu Démarrer, comme à une application classique.
+    </div>
+  </div>
+  <div class="pwa-install-actions">
+    <button class="pwa-install-now" id="pwaInstallNowBtn" type="button">INSTALLER LABEL DS</button>
+    <button class="pwa-install-later" id="pwaInstallLaterBtn" type="button">Plus tard</button>
+  </div>
+</div>
+
 <script src="/pwa-register.js"></script>
+
+<script>
+(() => {
+  const banner = document.getElementById('pwaInstallBanner');
+  const nowBtn = document.getElementById('pwaInstallNowBtn');
+  const laterBtn = document.getElementById('pwaInstallLaterBtn');
+  const legacyBtn = document.getElementById('installPwaBtn');
+
+  function wasDeferred(){
+    try{return localStorage.getItem('labelds_pwa_install_later')==='1'}catch{return false}
+  }
+
+  function installed(){
+    try{return typeof window.isLabelDsPwaInstalled==='function' && window.isLabelDsPwaInstalled()}catch{return false}
+  }
+
+  function showInstallUi(available){
+    const canShow = available && !installed() && !wasDeferred();
+    banner?.classList.toggle('visible', canShow);
+    if(legacyBtn){
+      legacyBtn.style.display = available && !installed() ? 'inline-flex' : 'none';
+      legacyBtn.textContent = 'Installer LABEL DS';
+    }
+  }
+
+  window.addEventListener('labelds:pwa-availability', (event)=>{
+    showInstallUi(Boolean(event.detail?.available));
+  });
+
+  window.addEventListener('labelds:pwa-installed', ()=>{
+    banner?.classList.remove('visible');
+    if(legacyBtn) legacyBtn.style.display='none';
+  });
+
+  nowBtn?.addEventListener('click', async ()=>{
+    if(typeof window.installLabelDsPwa!=='function') return;
+    const result = await window.installLabelDsPwa();
+    if(result?.outcome==='accepted'){
+      banner?.classList.remove('visible');
+    }
+  });
+
+  laterBtn?.addEventListener('click', ()=>{
+    try{localStorage.setItem('labelds_pwa_install_later','1')}catch{}
+    banner?.classList.remove('visible');
+  });
+
+  legacyBtn?.addEventListener('click', async (event)=>{
+    event.preventDefault();
+    if(typeof window.installLabelDsPwa==='function'){
+      await window.installLabelDsPwa();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

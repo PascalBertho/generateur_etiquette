@@ -1,39 +1,80 @@
 (() => {
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(err => {
-        console.warn("Service Worker LABEL DS :", err);
-      });
-    });
+  let deferredPrompt = null;
+
+  function dispatchAvailability(available) {
+    window.dispatchEvent(
+      new CustomEvent("labelds:pwa-availability", {
+        detail: { available: Boolean(available) },
+      })
+    );
   }
 
-  let deferredInstallPrompt = null;
-
-  window.addEventListener("beforeinstallprompt", event => {
+  window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
-    deferredInstallPrompt = event;
-
-    const button = document.getElementById("installPwaBtn");
-    if (button) button.style.display = "inline-flex";
+    deferredPrompt = event;
+    dispatchAvailability(true);
   });
 
   window.addEventListener("appinstalled", () => {
-    deferredInstallPrompt = null;
-    const button = document.getElementById("installPwaBtn");
-    if (button) button.style.display = "none";
+    deferredPrompt = null;
+    try {
+      localStorage.setItem("labelds_pwa_installed", "1");
+      localStorage.removeItem("labelds_pwa_install_later");
+    } catch {}
+    dispatchAvailability(false);
+    window.dispatchEvent(new CustomEvent("labelds:pwa-installed"));
   });
 
-  window.installLabelDsPwa = async function () {
-    if (!deferredInstallPrompt) {
-      alert("Si le bouton d'installation du navigateur n'apparaît pas encore, ouvrez le menu du navigateur puis choisissez « Installer LABEL DS » ou « Installer cette application ».");
-      return;
+  window.installLabelDsPwa = async function installLabelDsPwa() {
+    if (!deferredPrompt) {
+      return { available: false, outcome: "unavailable" };
     }
 
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
+    try {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      const outcome = choice?.outcome || "dismissed";
 
-    const button = document.getElementById("installPwaBtn");
-    if (button) button.style.display = "none";
+      if (outcome === "accepted") {
+        try {
+          localStorage.setItem("labelds_pwa_installed", "1");
+          localStorage.removeItem("labelds_pwa_install_later");
+        } catch {}
+      }
+
+      deferredPrompt = null;
+      dispatchAvailability(false);
+      return { available: true, outcome };
+    } catch (error) {
+      console.error("Installation PWA LABEL DS impossible", error);
+      return { available: true, outcome: "error" };
+    }
   };
+
+  window.isLabelDsPwaInstalled = function isLabelDsPwaInstalled() {
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.navigator.standalone === true;
+
+    let stored = false;
+    try {
+      stored = localStorage.getItem("labelds_pwa_installed") === "1";
+    } catch {}
+
+    return Boolean(standalone || stored);
+  };
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/service-worker.js")
+        .catch((error) =>
+          console.error("Service Worker LABEL DS non enregistré", error)
+        );
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    dispatchAvailability(Boolean(deferredPrompt));
+  });
 })();
