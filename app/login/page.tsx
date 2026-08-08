@@ -405,6 +405,18 @@ export default function LoginPage() {
 
           <div
             style={{
+              marginTop: 12,
+              textAlign: "center",
+              color: "#7a8996",
+              fontSize: 12,
+              lineHeight: 1.4,
+            }}
+          >
+            Après connexion, LABEL DS pourra être installé sur votre PC à votre demande.
+          </div>
+
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
               gap: 14,
