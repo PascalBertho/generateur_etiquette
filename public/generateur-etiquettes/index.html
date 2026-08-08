@@ -12,7 +12,7 @@
 :root{--ink:#182838;--soft:#607284;--line:#d7e0e7;--panel:#f4f7f9;--accent:#0f5f8c;--accent2:#e8722a}
 *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--panel);color:var(--ink)}
 header{height:64px;padding:0 24px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:1000} header h1{font-size:19px;margin:0} header .spacer{flex:1}
-button,select,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14px;font-weight:650;cursor:pointer}.primary{background:var(--accent);color:#fff}.accent{background:var(--accent2);color:#fff}.outline{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+button,select,input{font:inherit}.btn{border:0;border-radius:7px;padding:9px 14px;font-weight:650;cursor:pointer}.primary{background:var(--accent);color:#fff}.accent{background:var(--accent2);color:#fff}.outline{background:#fff;color:var(--accent);border:1px solid var(--accent)}.btn-lightgray{background:#dfe3e6!important;color:#263645!important;border:1px solid #c7cdd2!important;font-weight:700}.btn-lightgray:hover{background:#d3d8dc!important}.btn-black{background:#111!important;color:#fff!important;border:1px solid #111!important;font-weight:800}.btn-black:hover{background:#2b2b2b!important}.summary-actions{display:grid;grid-template-columns:auto auto;gap:8px 10px;align-items:center}
 main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(260px,1.4fr) auto auto auto;gap:12px;align-items:end}.field label{display:block;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:5px}.field select,.field input{width:100%;height:39px;border:1px solid #9fb0bd;border-radius:7px;padding:0 10px;background:#fff;color:var(--ink)}
 .status{margin-top:10px;font-size:12px;color:var(--soft)}.summary{margin-top:10px;display:flex;align-items:center;gap:12px;font-size:13px;flex-wrap:wrap}.summary strong{color:var(--accent)}.pagination{margin-left:auto;display:flex;align-items:center;gap:7px}.pagination .btn{padding:6px 10px;font-size:12px}.pagination .btn:disabled{opacity:.45;cursor:not-allowed}.page-info{min-width:190px;text-align:center;font-size:12px;color:var(--soft);font-weight:650}
@@ -35,31 +35,33 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
       <div class="field"><label>Activité DS</label><select id="filterSecteur"><option value="Tous">Tous</option></select></div>
       <div class="field"><label>Groupe</label><select id="filterGroupe"><option value="Tous">Tous</option></select></div>
       <div class="field wide"><label>Recherche article</label><input id="articleSearch" type="search" placeholder="Référence DS, famille ou libellé"></div>
-      <button class="btn primary" id="refreshBtn">Actualiser</button>
+      <button class="btn btn-lightgray" id="refreshBtn">Actualiser</button>
 
       <!-- Le bouton Photo historique est conservé pour garder son script intact,
            mais il est masqué pour le moment. -->
       <div class="action-block">
         <button class="btn outline" id="photoBtn" style="display:none">Photo</button>
         <span class="tooltip" data-tooltip="Importer les nouvelles photos produits depuis le dossier réseau Q:. Connexion VPN ou accès au lecteur Q: requis.">
-          <button class="btn outline" id="importPhotoBtn" onclick="location.href='/generateur-etiquettes/import-photos.html'">Import Photo</button>
+          <button class="btn btn-lightgray" id="importPhotoBtn" onclick="location.href='/generateur-etiquettes/import-photos.html'">Import Photo</button>
         </span>
       </div>
 
       <div class="action-block">
         <span class="tooltip" data-tooltip="Seules les étiquettes déjà ajoutées au panier seront présentes dans l’aperçu.">
-          <button class="btn accent" id="previewBtn">Ouvrir l'aperçu des étiquettes</button>
+          <button class="btn btn-black" id="previewBtn">Ouvrir l'aperçu des étiquettes</button>
         </span>
       </div>
     </div>
     <div class="summary">
-      <button class="btn outline" id="selectPageBtn">Ajouter la sélection au panier</button>
-      <button class="btn outline" id="clearDisplayedBtn" title="Vide la liste affichée et réinitialise les filtres de recherche">Vider liste affichée</button>
+      <div class="summary-actions">
+        <button class="btn btn-lightgray" id="selectPageBtn">Ajouter la sélection au panier</button>
+        <button class="btn btn-lightgray" id="clearDisplayedBtn" title="Vide la liste affichée et réinitialise les filtres de recherche">Vider liste affichée</button>
+        <button class="btn btn-black" id="viewSelectionBtn">Voir Panier <span class="basket-badge" id="basketBadge">0</span></button>
+        <button class="btn btn-black" id="clearSelectionBtn">Vider le panier</button>
+      </div>
       <span><strong id="filteredCount">0</strong> article(s) dans la liste</span>
       <span><strong id="displayedCount">0</strong> affiché(s)</span>
       <span id="selectionCount">0 article dans le panier</span>
-      <button class="btn outline" id="viewSelectionBtn">Voir Panier <span class="basket-badge" id="basketBadge">0</span></button>
-      <button class="btn outline" id="clearSelectionBtn">Vider le panier</button>
       <div class="pagination">
         <button class="btn outline" id="firstPageBtn" title="Première page">« Première</button>
         <button class="btn outline" id="prevPageBtn" title="Page précédente">‹ Précédente</button>
@@ -75,7 +77,7 @@ main{width:100%;padding:18px 22px}.toolbar{background:#fff;border:1px solid var(
     <table>
       <thead><tr>
         <th class="check-col"><span class="tooltip check-tooltip" data-tooltip="Sélectionner ou désélectionner toutes les lignes actuellement affichées."><input id="selectDisplayedCheck" type="checkbox" aria-label="Sélectionner toutes les lignes affichées"></span></th>
-        <th data-sort="numero">Référence DS</th><th data-sort="refFournisseur">Référence fournisseur</th><th data-sort="groupe">Groupe</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="secteur">Secteur</th><th data-sort="prix">Prix</th><th data-sort="barcode">Code à barre</th><th>Aperçu code barre</th><th data-sort="photo">Photo actuelle</th>
+        <th data-sort="numero">Référence DS</th><th data-sort="refFournisseur">Référence fournisseur</th><th data-sort="groupe">Groupe</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="secteur">Secteur</th><th data-sort="prix">Prix</th><th data-sort="barcode">Code à barre</th><th data-sort="barcode">Aperçu code barre</th><th data-sort="photo">Photo actuelle</th>
       </tr></thead>
       <tbody id="articlesBody"></tbody>
     </table>

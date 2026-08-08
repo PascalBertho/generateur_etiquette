@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Import des photos produits</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#1c2b3a}
@@ -34,6 +35,7 @@ tr:nth-child(even) td{background:#fafbfc}
 .status{font-weight:700}
 .s-new{color:#067647}.s-existing{color:#52606b}.s-link{color:#0f5f8c}
 .s-ambiguous{color:#b54708}.s-none{color:#8b1e1e}.s-error{color:#b42318}
+.sortable{cursor:pointer;user-select:none}.sort-mark{font-size:10px;margin-left:5px;color:#d7e0e7}.th-filter{margin-top:6px;width:100%;min-width:135px;height:28px;border:1px solid #9fb0bd;border-radius:5px;background:#fff;color:#1c2b3a;font-size:11px;padding:2px 6px}.th-filter-wrap{display:flex;flex-direction:column;gap:3px}
 #progress{margin-top:10px;font-size:13px;font-weight:700}
 progress{width:100%;height:18px;margin-top:7px}
 @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
@@ -98,12 +100,26 @@ progress{width:100%;height:18px;margin-top:7px}
       <table>
         <thead>
           <tr>
-            <th>Photo source Q:</th>
-            <th>Article</th>
-            <th>Fichier bucket</th>
-            <th>Correspondance</th>
-            <th>Action</th>
-            <th>Détail</th>
+            <th class="sortable" data-sort="sourceName">Photo source Q:</th>
+            <th class="sortable" data-sort="articleNumero">Article</th>
+            <th class="sortable" data-sort="targetName">Fichier bucket</th>
+            <th data-sort="matchType">
+              <div class="th-filter-wrap">
+                <span class="sortable" data-sort-trigger="matchType">Correspondance</span>
+                <select id="matchFilter" class="th-filter" aria-label="Filtrer Correspondance">
+                  <option value="Tous">Tous</option>
+                </select>
+              </div>
+            </th>
+            <th data-sort="action">
+              <div class="th-filter-wrap">
+                <span class="sortable" data-sort-trigger="action">Action</span>
+                <select id="actionFilter" class="th-filter" aria-label="Filtrer Action">
+                  <option value="Tous">Tous</option>
+                </select>
+              </div>
+            </th>
+            <th class="sortable" data-sort="detail">Détail</th>
           </tr>
         </thead>
         <tbody id="resultBody"></tbody>
@@ -119,6 +135,9 @@ const BUCKET='articles_photo';
 let selectedFiles=[];
 let fileByName=new Map();
 let analysisRows=[];
+let importSortKey='sourceName';
+let importSortDir='asc';
+let supabaseClient=null;
 
 const filesBtn=document.getElementById('filesBtn');
 const filesInput=document.getElementById('filesInput');
@@ -188,9 +207,51 @@ function statusLabel(row){
   }
 }
 
+function normalizeFilterValue(v){
+  return String(v??'').trim();
+}
+
+function fillImportFilters(){
+  const matchFilter=document.getElementById('matchFilter');
+  const actionFilter=document.getElementById('actionFilter');
+  if(!matchFilter||!actionFilter) return;
+
+  const currentMatch=matchFilter.value||'Tous';
+  const currentAction=actionFilter.value||'Tous';
+  const matches=[...new Set(analysisRows.map(r=>normalizeFilterValue(r.matchType)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true,sensitivity:'base'}));
+  const actions=[...new Set(analysisRows.map(r=>normalizeFilterValue(r.action)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true,sensitivity:'base'}));
+
+  matchFilter.innerHTML='<option value="Tous">Tous</option>'+matches.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  actionFilter.innerHTML='<option value="Tous">Tous</option>'+actions.map(v=>`<option value="${esc(v)}">${esc(statusLabel({action:v})[0]||v)}</option>`).join('');
+  if([...matchFilter.options].some(o=>o.value===currentMatch)) matchFilter.value=currentMatch;
+  if([...actionFilter.options].some(o=>o.value===currentAction)) actionFilter.value=currentAction;
+}
+
+function importRowsDisplayed(){
+  const matchValue=document.getElementById('matchFilter')?.value||'Tous';
+  const actionValue=document.getElementById('actionFilter')?.value||'Tous';
+  let rows=analysisRows.filter(r=>(matchValue==='Tous'||normalizeFilterValue(r.matchType)===matchValue)&&(actionValue==='Tous'||normalizeFilterValue(r.action)===actionValue));
+  rows=rows.slice().sort((a,b)=>{
+    const av=normalizeFilterValue(a?.[importSortKey]);
+    const bv=normalizeFilterValue(b?.[importSortKey]);
+    return av.localeCompare(bv,'fr',{numeric:true,sensitivity:'base'})*(importSortDir==='asc'?1:-1);
+  });
+  return rows;
+}
+
+function updateImportSortMarks(){
+  document.querySelectorAll('#tableCard [data-sort], #tableCard [data-sort-trigger]').forEach(el=>{
+    el.querySelector?.('.sort-mark')?.remove();
+  });
+  const sel=document.querySelector(`#tableCard [data-sort-trigger="${importSortKey}"]`) || document.querySelector(`#tableCard th[data-sort="${importSortKey}"]`);
+  if(sel) sel.insertAdjacentHTML('beforeend',`<span class="sort-mark">${importSortDir==='asc'?'▲':'▼'}</span>`);
+}
+
 function renderRows(){
+  fillImportFilters();
   const body=document.getElementById('resultBody');
-  body.innerHTML=analysisRows.map(r=>{
+  const rows=importRowsDisplayed();
+  body.innerHTML=rows.map(r=>{
     const [label,cls]=statusLabel(r);
     return `<tr>
       <td>${esc(r.sourceName||'')}</td>
@@ -201,6 +262,7 @@ function renderRows(){
       <td>${esc(r.detail||'')}</td>
     </tr>`;
   }).join('');
+  updateImportSortMarks();
 }
 
 function renderStats(){
@@ -214,6 +276,20 @@ function renderStats(){
   document.getElementById('statsCard').hidden=false;
   document.getElementById('tableCard').hidden=false;
 }
+
+document.addEventListener('click',e=>{
+  const target=e.target.closest?.('#tableCard .sortable');
+  if(!target) return;
+  const key=target.dataset.sortTrigger||target.dataset.sort;
+  if(!key) return;
+  if(importSortKey===key) importSortDir=importSortDir==='asc'?'desc':'asc';
+  else{importSortKey=key;importSortDir='asc';}
+  renderRows();
+});
+
+document.addEventListener('change',e=>{
+  if(e.target?.id==='matchFilter'||e.target?.id==='actionFilter') renderRows();
+});
 
 async function analyzeSelectedFiles(){
   clearError();
@@ -292,6 +368,13 @@ filesInput.addEventListener('change',async()=>{
   await analyzeSelectedFiles();
 });
 
+async function ensureSupabaseClient(config){
+  if(supabaseClient) return supabaseClient;
+  if(!window.supabase) throw new Error('Bibliothèque Supabase indisponible.');
+  supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
+  return supabaseClient;
+}
+
 importBtn.addEventListener('click',async()=>{
   clearError();
   const todo=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only');
@@ -340,22 +423,16 @@ importBtn.addEventListener('click',async()=>{
           const file=fileByName.get(String(row.sourceName).toLowerCase());
           if(!file) throw new Error('Fichier source introuvable dans la sélection.');
 
-          if(!prep.signedUrl) throw new Error('URL d’upload signée absente.');
+          const client=await ensureSupabaseClient(prep);
 
-          const formData=new FormData();
-          formData.append('cacheControl','3600');
-          formData.append('',file);
+          const {error:uploadError}=await client.storage
+            .from(BUCKET)
+            .uploadToSignedUrl(prep.path,prep.token,file,{
+              contentType:'image/png',
+              cacheControl:'3600'
+            });
 
-          const uploadResponse=await fetch(prep.signedUrl,{
-            method:'PUT',
-            headers:{'x-upsert':'false'},
-            body:formData
-          });
-
-          if(!uploadResponse.ok){
-            const detail=await uploadResponse.text().catch(()=> '');
-            throw new Error('Upload Supabase impossible (HTTP '+uploadResponse.status+') : '+detail);
-          }
+          if(uploadError) throw uploadError;
 
           await api({
             action:'confirm',
