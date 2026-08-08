@@ -703,8 +703,7 @@ body.header-collapsed header{
 }
 body.header-collapsed .app-logo,
 body.header-collapsed header h1,
-body.header-collapsed .header-actions,
-body.header-collapsed #logoutBtn{
+body.header-collapsed .header-actions{
   display:none!important;
 }
 body.header-collapsed .header-nav{
@@ -882,6 +881,30 @@ body.header-collapsed .table-wrap{
   .table-wrap{max-height:calc(100vh - 325px)}
 }
 
+
+/* Position du bouton deconnexion */
+#logoutBtn{
+  position:absolute!important;
+  left:10px!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:7px!important;
+  z-index:1005!important;
+  display:block!important;
+  padding:2px 4px!important;
+  border:0!important;
+  background:transparent!important;
+  color:rgba(255,255,255,.92)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+body.header-collapsed #logoutBtn{
+  display:block!important;
+  left:10px!important;
+  bottom:7px!important;
+  color:rgba(255,255,255,.92)!important;
+}
+
 </style>
 
 </head>
@@ -911,10 +934,10 @@ body.header-collapsed .table-wrap{
   </nav>
 
   <div class="header-actions">
-    <button class="btn" id="headerAddBtn">🛒＋ &nbsp; AJOUTER LA SÉLECTION<br>AU PANIER</button>
-    <button class="btn" id="headerViewBtn">🛒 &nbsp; VOIR PANIER <span class="basket-badge" id="headerBasketBadge">0</span></button>
+    <button class="btn" id="headerAddBtn">🛒＋ &nbsp; AJOUTER LA SÉLECTION<br>AU PANIER ÉTIQUETTES</button>
+    <button class="btn" id="headerViewBtn">🛒 &nbsp; VOIR PANIER ÉTIQUETTES <span class="basket-badge" id="headerBasketBadge">0</span></button>
     <button class="btn" id="headerClearDisplayedBtn">▣ &nbsp; VIDER LISTE AFFICHÉE</button>
-    <button class="btn" id="headerClearCartBtn">▣ &nbsp; VIDER PANIER</button>
+    <button class="btn" id="headerClearCartBtn">▣ &nbsp; VIDER PANIER ÉTIQUETTES</button>
   </div>
 
   <button class="btn outline" id="installPwaBtn" style="display:none" onclick="installLabelDsPwa()">Installer LABEL DS</button>
@@ -949,8 +972,8 @@ body.header-collapsed .table-wrap{
       <div class="summary-actions">
         <button class="btn btn-lightgray" id="selectPageBtn">Ajouter la sélection au panier</button>
         <button class="btn btn-lightgray" id="clearDisplayedBtn" title="Vide la liste affichée et réinitialise les filtres de recherche">Vider liste affichée</button>
-        <button class="btn btn-black" id="viewSelectionBtn">Voir Panier <span class="basket-badge" id="basketBadge">0</span></button>
-        <button class="btn btn-black" id="clearSelectionBtn">Vider le panier</button>
+        <button class="btn btn-black" id="viewSelectionBtn">Voir Panier Étiquettes <span class="basket-badge" id="basketBadge">0</span></button>
+        <button class="btn btn-black" id="clearSelectionBtn">Vider le panier Étiquettes</button>
       </div>
       <span><strong id="filteredCount">0</strong> article(s) dans la liste</span>
       <span><strong id="displayedCount">0</strong> affiché(s)</span>
@@ -1150,8 +1173,8 @@ function synchroniserNouvelleEntete(){
   if(add){
     const n=listSelection.size;
     add.innerHTML=n
-      ? `🛒＋ &nbsp; AJOUTER LES ${n} SÉLECTIONNÉ${n>1?'S':''}<br>AU PANIER`
-      : '🛒＋ &nbsp; AJOUTER LA SÉLECTION<br>AU PANIER';
+      ? `🛒＋ &nbsp; AJOUTER LES ${n} SÉLECTIONNÉ${n>1?'S':''}<br>AU PANIER ÉTIQUETTES`
+      : '🛒＋ &nbsp; AJOUTER LA SÉLECTION<br>AU PANIER ÉTIQUETTES';
   }
 }
 const ancienneUpdateCount=updateCount;
@@ -1192,6 +1215,20 @@ headerCollapseToggle?.addEventListener('click',()=>{
 });
 
 restaurerSelection();majPagination();loadActivites();
+
+try{
+  const params=new URLSearchParams(location.search);
+  if(params.get('openCart')==='1'){
+    setTimeout(()=>{
+      renderCart();
+      cartModal.classList.add('open');
+      cartModal.setAttribute('aria-hidden','false');
+    },150);
+    params.delete('openCart');
+    const clean=params.toString();
+    history.replaceState(null,'',location.pathname+(clean?'?'+clean:'')+location.hash);
+  }
+}catch(e){}
 </script>
 <script src="/pwa-register.js"></script>
 </body>
