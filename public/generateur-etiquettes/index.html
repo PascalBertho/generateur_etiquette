@@ -210,7 +210,7 @@ main{
 }
 .filters{
   display:grid;
-  grid-template-columns:220px 220px 220px minmax(300px,1fr) 160px;
+  grid-template-columns:220px 220px minmax(360px,1fr);
   gap:18px;
   align-items:end;
 }
@@ -598,7 +598,6 @@ body.header-collapsed .table-wrap{
   .header-actions .btn{min-height:50px;font-size:11px}
   .filters{grid-template-columns:1fr 1fr}
   .filters .wide{grid-column:1/-1}
-  #refreshBtn{grid-column:1/-1}
   .table-wrap{max-height:calc(100vh - 545px)}
 }
 
@@ -749,9 +748,7 @@ body.header-collapsed .table-wrap{
       <div class="field"><label>Activité DS</label><select id="filterSecteur"><option value="Tous">Tous</option></select></div>
       <div class="field"><label>Groupe</label><select id="filterGroupe"><option value="Tous">Tous</option></select></div>
       <div class="field wide"><label>Recherche article</label><input id="articleSearch" type="search" placeholder="Référence DS, famille ou libellé"></div>
-      <button class="btn btn-lightgray" id="refreshBtn">Actualiser</button>
-
-      <!-- Le bouton Photo historique est conservé pour garder son script intact,
+<!-- Le bouton Photo historique est conservé pour garder son script intact,
            mais il est masqué pour le moment. -->
       <div class="action-block">
         <button class="btn outline" id="photoBtn" style="display:none">Photo</button>
@@ -893,7 +890,6 @@ function majPagination(){const debut=totalArticles?((currentPage-1)*PAGE_SIZE+1)
 async function allerPage(page){const cible=Math.min(totalPages,Math.max(1,page));if(cible===currentPage)return;currentPage=cible;enregistrerEtat();await loadArticles();document.querySelector('.table-wrap')?.scrollTo({top:0,behavior:'smooth'})}
 filterSecteur.addEventListener('change',()=>{currentPage=1;filterGroupe.value='Tous';enregistrerEtat();loadGroupes(false)});
 filterGroupe.addEventListener('change',()=>{currentPage=1;enregistrerEtat();loadArticles()});
-refreshBtn.addEventListener('click',()=>{currentPage=1;loadArticles()});
 articleSearch.addEventListener('input',()=>{currentPage=1;enregistrerEtat();clearTimeout(timer);const terme=articleSearch.value.trim();if(terme.length>0&&terme.length<3){afficherEtat('Saisissez au moins 3 caractères pour lancer la recherche.',2500);return}timer=setTimeout(loadArticles,500)});
 articleSearch.addEventListener('keydown',(event)=>{if(event.key!=='Enter')return;event.preventDefault();clearTimeout(timer);const terme=articleSearch.value.trim();if(terme.length>0&&terme.length<3){afficherEtat('Saisissez au moins 3 caractères pour lancer la recherche.',2500);return}currentPage=1;loadArticles()});
 selectPageBtn.addEventListener('click',()=>{if(!listSelection.size){afficherEtat('Cochez d’abord une ou plusieurs lignes dans la liste.',2500);return}let ajoutes=0;for(const ref of [...listSelection]){const a=articles.find(x=>String(x.numero)===String(ref));if(!a)continue;if(selected.has(String(ref)))continue;if(selected.size>=500)break;selected.add(String(ref));selectedArticles.set(String(ref),a);ajoutes++}sauvegarderPanier();listSelection.clear();render();renderCart();afficherEtat(ajoutes?ajoutes+' article(s) ajouté(s) au panier.':'Les articles sélectionnés sont déjà dans le panier.',2500)});
