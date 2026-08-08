@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Import des photos produits</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#1c2b3a}
@@ -120,7 +119,6 @@ const BUCKET='articles_photo';
 let selectedFiles=[];
 let fileByName=new Map();
 let analysisRows=[];
-let supabaseClient=null;
 
 const filesBtn=document.getElementById('filesBtn');
 const filesInput=document.getElementById('filesInput');
@@ -294,13 +292,6 @@ filesInput.addEventListener('change',async()=>{
   await analyzeSelectedFiles();
 });
 
-async function ensureSupabaseClient(config){
-  if(supabaseClient) return supabaseClient;
-  if(!window.supabase) throw new Error('Bibliothèque Supabase indisponible.');
-  supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
-  return supabaseClient;
-}
-
 importBtn.addEventListener('click',async()=>{
   clearError();
   const todo=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only');
@@ -349,16 +340,22 @@ importBtn.addEventListener('click',async()=>{
           const file=fileByName.get(String(row.sourceName).toLowerCase());
           if(!file) throw new Error('Fichier source introuvable dans la sélection.');
 
-          const client=await ensureSupabaseClient(prep);
+          if(!prep.signedUrl) throw new Error('URL d’upload signée absente.');
 
-          const {error:uploadError}=await client.storage
-            .from(BUCKET)
-            .uploadToSignedUrl(prep.path,prep.token,file,{
-              contentType:'image/png',
-              cacheControl:'3600'
-            });
+          const formData=new FormData();
+          formData.append('cacheControl','3600');
+          formData.append('',file);
 
-          if(uploadError) throw uploadError;
+          const uploadResponse=await fetch(prep.signedUrl,{
+            method:'PUT',
+            headers:{'x-upsert':'false'},
+            body:formData
+          });
+
+          if(!uploadResponse.ok){
+            const detail=await uploadResponse.text().catch(()=> '');
+            throw new Error('Upload Supabase impossible (HTTP '+uploadResponse.status+') : '+detail);
+          }
 
           await api({
             action:'confirm',
