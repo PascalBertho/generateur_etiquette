@@ -1346,6 +1346,7 @@ try{
 
 <script>
 (() => {
+  try{localStorage.removeItem('labelds_pwa_install_later')}catch{}
   const panel = document.getElementById('pwaPanel');
   const installBtn = document.getElementById('pwaInstallMainBtn');
   const diagBtn = document.getElementById('pwaDiagBtn');
@@ -1430,6 +1431,9 @@ try{
   });
 
   closeBtn?.addEventListener('click',()=>{
+    // Ferme uniquement pour la page actuelle.
+    // Aucun refus n'est mémorisé : la proposition reviendra au prochain chargement
+    // tant que LABEL DS n'est pas réellement installé.
     panel?.remove();
   });
 
