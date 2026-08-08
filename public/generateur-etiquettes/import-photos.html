@@ -39,12 +39,323 @@ tr:nth-child(even) td{background:#fafbfc}
 #progress{margin-top:10px;font-size:13px;font-weight:700}
 progress{width:100%;height:18px;margin-top:7px}
 @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ==========================================================
+   THEME APPLICATION - IMPORT PHOTOS
+   ========================================================== */
+:root{
+  --ink:#182838;
+  --ink2:#20384f;
+  --soft:#66788a;
+  --line:#d8e0e6;
+  --panel:#f6f7f8;
+  --red:#e1262b;
+  --red-dark:#c91e23;
+  --sand:#e2b985;
+  --orange:#e8722a;
+  --green:#1c8a2c;
+}
+body{
+  background:var(--panel);
+  color:var(--ink);
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  padding-top:92px;
+}
+header{
+  position:fixed;
+  top:0;left:0;right:0;
+  z-index:1000;
+  height:92px;
+  padding:8px 18px;
+  display:grid;
+  grid-template-columns:180px minmax(320px,1fr) 560px;
+  gap:18px;
+  align-items:center;
+  background:
+    radial-gradient(circle at 45% 48%, rgba(255,255,255,.04), transparent 34%),
+    linear-gradient(108deg,#182838 0%,#20374d 48%,#182838 100%);
+  color:#fff;
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+}
+.import-brand{
+  display:flex;
+  align-items:center;
+}
+.import-brand-logo{
+  width:165px;
+  height:70px;
+  object-fit:contain;
+  background:#182838;
+  mix-blend-mode:lighten;
+}
+.import-title-wrap{min-width:0}
+.import-title-wrap h1{
+  margin:0;
+  font-family:"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",Impact,Arial,sans-serif;
+  font-size:27px;
+  line-height:1;
+  text-transform:uppercase;
+  letter-spacing:-.3px;
+  font-weight:900;
+}
+.import-subtitle{
+  margin-top:6px;
+  color:#d7e0e7;
+  font-size:11.5px;
+}
+.import-nav{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  height:72px;
+}
+.import-nav a{
+  color:#fff;
+  text-decoration:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  font-size:10.5px;
+  font-weight:900;
+  white-space:nowrap;
+  border-bottom:3px solid transparent;
+}
+.import-nav a.active{border-bottom-color:var(--red)}
+.import-nav .nav-icon{
+  display:block;
+  font-size:24px;
+  line-height:1;
+}
+
+main{
+  max-width:1280px;
+  margin:18px auto;
+  padding:0 18px 30px;
+}
+
+.card{
+  border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+.warning{
+  position:relative;
+  padding-left:62px;
+  background:#fffaf3;
+  border:1px solid #f1c18e;
+  color:#6a4217;
+}
+.warning::before{
+  content:"!";
+  position:absolute;
+  left:18px;
+  top:50%;
+  transform:translateY(-50%);
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f28b24;
+  color:#fff;
+  font-weight:900;
+}
+.warning strong{
+  font-size:15px;
+  color:#573712;
+}
+.path{
+  background:#f2f4f6;
+  border:1px solid #e5e9ed;
+  color:#17283a;
+}
+
+.import-main-card{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);
+  gap:18px;
+  align-items:start;
+}
+.import-block-title{
+  margin:0 0 12px;
+  font-size:15px;
+  font-weight:900;
+  color:#182838;
+}
+.import-steps{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.import-step{
+  padding:14px;
+  background:#f8fafc;
+  border:1px solid #e1e7eb;
+  border-radius:9px;
+}
+.import-step strong{
+  display:block;
+  margin-bottom:8px;
+  font-size:13px;
+  color:#182838;
+}
+.import-info-list{
+  display:grid;
+  gap:11px;
+}
+.import-info-item{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  font-size:12.5px;
+  line-height:1.45;
+  color:#32485c;
+}
+.import-info-icon{
+  flex:0 0 auto;
+  width:26px;
+  height:26px;
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#eef3f6;
+  color:#182838;
+  font-weight:900;
+}
+.import-status-card{
+  margin-top:16px;
+  padding:14px;
+  border:1px solid #dfe6eb;
+  border-radius:9px;
+  background:#fff;
+}
+.import-status-card strong{
+  display:block;
+  font-size:13px;
+  margin-bottom:6px;
+}
+.import-status-wait{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  color:#647588;
+}
+.import-status-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:#e9edf1;
+  color:#7b8995;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-weight:900;
+}
+
+.actions .btn{
+  min-height:44px;
+  padding:10px 16px;
+  font-size:13px;
+  font-weight:850;
+}
+.btn-primary{
+  background:#182838;
+  color:#fff;
+}
+.btn-primary:hover{background:#243d53}
+.btn-import{
+  background:var(--orange);
+  color:#fff;
+}
+.btn-secondary{
+  background:#fff;
+  color:#182838;
+  border:1px solid #b9c5ce;
+}
+
+.stats{
+  grid-template-columns:repeat(6,minmax(110px,1fr));
+}
+.stat{
+  background:#fff;
+  border-color:#dfe6eb;
+  box-shadow:0 1px 3px rgba(0,0,0,.03);
+}
+.stat b{
+  color:#182838;
+  font-size:22px;
+}
+.stat span{
+  font-size:11px;
+  font-weight:700;
+}
+
+.table-wrap{
+  border-radius:9px;
+}
+table{
+  font-size:12.5px;
+}
+th{
+  background:#182838;
+  color:#fff;
+  font-size:12.5px;
+  padding:10px;
+}
+td{
+  padding:9px 10px;
+}
+
+@media(max-width:1000px){
+  header{
+    grid-template-columns:140px 1fr;
+    grid-template-rows:auto auto;
+    height:142px;
+  }
+  body{padding-top:142px}
+  .import-brand-logo{width:130px;height:58px}
+  .import-nav{grid-column:1/-1}
+  .import-main-card{grid-template-columns:1fr}
+}
+@media(max-width:850px){
+  .import-steps{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
 <header>
-  <h1>Import des photos produits</h1>
-  <button class="btn btn-secondary" onclick="history.back()">Retour</button>
+  <div class="import-brand">
+    <img class="import-brand-logo" src="/generateur-etiquettes/Logo_DS_Label.png" alt="Logo DS" onerror="this.style.display='none'">
+  </div>
+
+  <div class="import-title-wrap">
+    <h1>Import des photos produits</h1>
+    <div class="import-subtitle">Chargement et correspondance automatique des photos articles</div>
+  </div>
+
+  <nav class="import-nav" aria-label="Navigation principale">
+    <a href="/generateur-etiquettes/">
+      <span class="nav-icon">⌂</span>
+      <span>ACCUEIL</span>
+    </a>
+    <a href="#" class="active">
+      <span class="nav-icon">⇧</span>
+      <span>IMPORT PHOTOS</span>
+    </a>
+    <a href="/generateur-etiquettes/">
+      <span class="nav-icon">🛒</span>
+      <span>PANIER</span>
+    </a>
+    <a href="/generateur-etiquettes/apercu.html">
+      <span class="nav-icon">▤</span>
+      <span>APERÇU ÉTIQUETTES</span>
+    </a>
+  </nav>
 </header>
 
 <main>
@@ -55,33 +366,70 @@ progress{width:100%;height:18px;margin-top:7px}
     Vérifiez que le VPN est actif et que le lecteur <b>Q:</b> est accessible.
   </section>
 
-  <section class="card">
-    <div class="actions">
-      <button class="btn btn-primary" id="filesBtn" type="button">Charger les PNG du dossier Q:</button>
-      <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
-      <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
+  <section class="card import-main-card">
+    <div>
+      <h2 class="import-block-title">Importer les photos</h2>
+
+      <div class="import-steps">
+        <div class="import-step">
+          <strong>1. Charger les PNG du dossier Q:</strong>
+          <div class="actions">
+            <button class="btn btn-primary" id="filesBtn" type="button">Choisir le dossier Q:</button>
+            <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
+            <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossier sélectionné :</div>
+            <div class="path">Q:\Commun\Generateur Etiquette\Photos produits</div>
+            <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:800">
+              Aucun fichier chargé.
+            </div>
+            <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
+              Cliquez sur « Choisir le dossier Q: », ouvrez le dossier ci-dessus,
+              faites <b>Ctrl+A</b>, puis cliquez sur <b>Ouvrir</b>.
+            </div>
+          </div>
+        </div>
+
+        <div class="import-step">
+          <strong>2. Informations</strong>
+          <div class="import-info-list">
+            <div class="import-info-item">
+              <span class="import-info-icon">▧</span>
+              <span>Seuls les fichiers au format <b>PNG</b> sont pris en compte.</span>
+            </div>
+            <div class="import-info-item">
+              <span class="import-info-icon">◉</span>
+              <span>La correspondance article est analysée automatiquement avant import.</span>
+            </div>
+            <div class="import-info-item">
+              <span class="import-info-icon">✓</span>
+              <span>Les fichiers déjà présents dans le bucket <b>articles_photo</b> ne sont jamais remplacés.</span>
+            </div>
+            <div class="import-info-item">
+              <span class="import-info-icon">✓</span>
+              <span>Les fichiers présents sur le lecteur Q: ne sont jamais modifiés ni supprimés.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="progress"></div>
+      <progress id="progressBar" value="0" max="100" hidden></progress>
+      <div id="errorBox" class="error-box"></div>
     </div>
 
-    <div style="margin-top:12px;padding:12px 14px;border:1px solid #d7e0e7;border-radius:8px;background:#f7fafc">
-      <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossier attendu</div>
-      <div class="path">Q:\Commun\Generateur Etiquette\Photos produits</div>
-      <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:700">
-        Aucun fichier chargé.
+    <aside class="import-status-card">
+      <strong>Statut de l'import</strong>
+      <div class="import-status-wait">
+        <div class="import-status-icon">✓</div>
+        <div>
+          <div style="font-weight:850;color:#182838">En attente</div>
+          <div style="font-size:12px;margin-top:3px">Aucune importation en cours</div>
+        </div>
       </div>
-      <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
-        Cliquez sur « Charger les PNG du dossier Q: », ouvrez le dossier ci-dessus,
-        faites <b>Ctrl+A</b>, puis cliquez sur <b>Ouvrir</b>.
-      </div>
-    </div>
-
-    <p class="small">
-      Les fichiers déjà présents dans le bucket <b>articles_photo</b> ne sont jamais remplacés.
-      Les fichiers du lecteur Q: ne sont jamais modifiés ni supprimés.
-    </p>
-
-    <div id="progress"></div>
-    <progress id="progressBar" value="0" max="100" hidden></progress>
-    <div id="errorBox" class="error-box"></div>
+    </aside>
   </section>
 
   <section id="statsCard" class="card" hidden>
