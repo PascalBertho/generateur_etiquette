@@ -61,8 +61,8 @@
 
   <section class="card">
     <div class="actions">
-      <label class="btn btn-primary" for="folderInput">Accéder aux photos réseau Q:</label>
-      <input id="folderInput" type="file" accept=".png,image/png" multiple webkitdirectory directory hidden>
+      <button class="btn btn-primary" id="folderBtn" type="button">Accéder aux photos réseau Q:</button>
+      <input id="folderInput" type="file" multiple webkitdirectory directory hidden>
       <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
     </div>
 
@@ -125,6 +125,7 @@ let fileByName=new Map();
 let analysisRows=[];
 let supabaseClient=null;
 
+const folderBtn=document.getElementById('folderBtn');
 const folderInput=document.getElementById('folderInput');
 const importBtn=document.getElementById('importBtn');
 const progress=document.getElementById('progress');
@@ -180,6 +181,59 @@ async function analyzeSelectedFolder(){
     importBtn.disabled=true;
   }
 }
+
+async function chargerDepuisDirectoryHandle(handle){
+  selectedFiles=[];
+  fileByName=new Map();
+
+  if(handle.name !== 'Photos produits'){
+    document.getElementById('selectedInfo').textContent='Dossier sélectionné : '+handle.name;
+    userInfo.textContent='Attention : le dossier attendu est exactement « Photos produits » dans Q:\\Commun\\Generateur Etiquette\\.';
+  }
+
+  for await (const entry of handle.values()){
+    if(entry.kind !== 'file') continue;
+    if(!entry.name.toLowerCase().endsWith('.png')) continue;
+    const file=await entry.getFile();
+    selectedFiles.push(file);
+    fileByName.set(file.name.toLowerCase(),file);
+  }
+
+  if(!selectedFiles.length){
+    document.getElementById('selectedInfo').textContent='Aucun fichier PNG détecté dans ce dossier.';
+    userInfo.textContent='Vérifiez que vous avez bien ouvert Q:\\Commun\\Generateur Etiquette\\Photos produits et que le VPN / lecteur Q: est accessible.';
+    importBtn.disabled=true;
+    return;
+  }
+
+  await analyzeSelectedFolder();
+}
+
+folderBtn.addEventListener('click',async()=>{
+  importBtn.disabled=true;
+  progress.textContent='Ouverture du dossier réseau…';
+  userInfo.textContent='Dans la fenêtre Windows, ouvrez Q:\\Commun\\Generateur Etiquette\\Photos produits puis validez le dossier.';
+
+  if('showDirectoryPicker' in window){
+    try{
+      const handle=await window.showDirectoryPicker({mode:'read'});
+      await chargerDepuisDirectoryHandle(handle);
+    }catch(e){
+      if(e?.name==='AbortError'){
+        progress.textContent='Sélection annulée.';
+        userInfo.textContent='Aucun dossier n’a été sélectionné.';
+      }else{
+        progress.textContent='Impossible d’ouvrir le dossier.';
+        userInfo.textContent='Erreur : '+(e.message||String(e));
+      }
+    }
+  }else{
+    // Secours pour les navigateurs ne supportant pas showDirectoryPicker.
+    // Ne pas utiliser "accept=.png" ici : en mode dossier Windows peut sinon
+    // afficher "Aucun élément ne correspond à votre recherche".
+    folderInput.click();
+  }
+});
 
 folderInput.addEventListener('change',async()=>{
   selectedFiles=[...folderInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
