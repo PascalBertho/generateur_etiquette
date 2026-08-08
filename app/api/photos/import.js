@@ -298,9 +298,11 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: 'Action inconnue.' });
   } catch (error) {
-    console.error(error);
+    console.error('IMPORT PHOTOS ERROR:', error);
     return res.status(500).json({
-      error: error?.message || 'Erreur serveur pendant l’import des photos.'
+      error: error?.message || 'Erreur serveur pendant l’import des photos.',
+      detail: error?.details || error?.hint || error?.code || '',
+      stage: String(req?.body?.action || 'inconnue')
     });
   }
 }

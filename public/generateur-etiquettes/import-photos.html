@@ -61,8 +61,8 @@
 
   <section class="card">
     <div class="actions">
-      <button class="btn btn-primary" id="folderBtn" type="button">Accéder aux photos réseau Q:</button>
-      <input id="folderInput" type="file" multiple webkitdirectory directory hidden>
+      <button class="btn btn-primary" id="folderBtn" type="button">Charger les fichiers PNG du dossier Q:</button>
+      <input id="folderInput" type="file" accept=".png,image/png" multiple hidden>
       <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
     </div>
 
@@ -73,8 +73,9 @@
         En attente d'accès au dossier réseau.
       </div>
       <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
-        Cliquez sur « Accéder aux photos réseau Q: », puis ouvrez le dossier indiqué ci-dessus.
-        L'analyse démarre automatiquement dès que le dossier est validé.
+        Cliquez sur « Charger les fichiers PNG du dossier Q: », ouvrez le dossier indiqué ci-dessus,
+        faites <b>Ctrl+A</b> pour sélectionner les PNG puis cliquez sur <b>Ouvrir</b>.
+        L'analyse démarre automatiquement dès que les fichiers sont chargés.
       </div>
     </div>
 
@@ -177,62 +178,21 @@ async function analyzeSelectedFolder(){
     importBtn.disabled=aImporter===0;
   }catch(e){
     progress.textContent='Erreur pendant l’analyse.';
-    userInfo.textContent='Analyse impossible : '+e.message;
+    userInfo.innerHTML='<b>Analyse impossible :</b> '+esc(e.message||String(e))+
+      '<br><span style="color:#8b1e1e">Aucun fichier du lecteur Q: n’a été modifié ou supprimé.</span>';
     importBtn.disabled=true;
+    console.error('Erreur analyse photos',e);
   }
 }
 
-async function chargerDepuisDirectoryHandle(handle){
-  selectedFiles=[];
-  fileByName=new Map();
-
-  if(handle.name !== 'Photos produits'){
-    document.getElementById('selectedInfo').textContent='Dossier sélectionné : '+handle.name;
-    userInfo.textContent='Attention : le dossier attendu est exactement « Photos produits » dans Q:\\Commun\\Generateur Etiquette\\.';
-  }
-
-  for await (const entry of handle.values()){
-    if(entry.kind !== 'file') continue;
-    if(!entry.name.toLowerCase().endsWith('.png')) continue;
-    const file=await entry.getFile();
-    selectedFiles.push(file);
-    fileByName.set(file.name.toLowerCase(),file);
-  }
-
-  if(!selectedFiles.length){
-    document.getElementById('selectedInfo').textContent='Aucun fichier PNG détecté dans ce dossier.';
-    userInfo.textContent='Vérifiez que vous avez bien ouvert Q:\\Commun\\Generateur Etiquette\\Photos produits et que le VPN / lecteur Q: est accessible.';
-    importBtn.disabled=true;
-    return;
-  }
-
-  await analyzeSelectedFolder();
-}
-
-folderBtn.addEventListener('click',async()=>{
+folderBtn.addEventListener('click',()=>{
   importBtn.disabled=true;
-  progress.textContent='Ouverture du dossier réseau…';
-  userInfo.textContent='Dans la fenêtre Windows, ouvrez Q:\\Commun\\Generateur Etiquette\\Photos produits puis validez le dossier.';
-
-  if('showDirectoryPicker' in window){
-    try{
-      const handle=await window.showDirectoryPicker({mode:'read'});
-      await chargerDepuisDirectoryHandle(handle);
-    }catch(e){
-      if(e?.name==='AbortError'){
-        progress.textContent='Sélection annulée.';
-        userInfo.textContent='Aucun dossier n’a été sélectionné.';
-      }else{
-        progress.textContent='Impossible d’ouvrir le dossier.';
-        userInfo.textContent='Erreur : '+(e.message||String(e));
-      }
-    }
-  }else{
-    // Secours pour les navigateurs ne supportant pas showDirectoryPicker.
-    // Ne pas utiliser "accept=.png" ici : en mode dossier Windows peut sinon
-    // afficher "Aucun élément ne correspond à votre recherche".
-    folderInput.click();
-  }
+  progress.textContent='Sélection des fichiers en attente…';
+  userInfo.innerHTML=
+    'Dans la fenêtre Windows, allez dans <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
+    'faites <b>Ctrl+A</b> pour sélectionner tous les fichiers PNG puis cliquez sur <b>Ouvrir</b>.';
+  folderInput.value='';
+  folderInput.click();
 });
 
 folderInput.addEventListener('change',async()=>{
@@ -240,11 +200,18 @@ folderInput.addEventListener('change',async()=>{
   fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
 
   if(!selectedFiles.length){
-    document.getElementById('selectedInfo').textContent='Aucun PNG trouvé dans le dossier sélectionné.';
-    userInfo.textContent='Vérifiez le VPN et l’accès au lecteur Q:, puis ouvrez exactement Q:\\Commun\\Generateur Etiquette\\Photos produits.';
+    document.getElementById('selectedInfo').textContent='Aucun fichier PNG sélectionné.';
+    userInfo.innerHTML=
+      'Vérifiez le VPN et l’accès au lecteur Q:, puis ouvrez <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
+      'faites <b>Ctrl+A</b> puis cliquez sur <b>Ouvrir</b>.';
+    progress.textContent='Aucun fichier chargé.';
     importBtn.disabled=true;
     return;
   }
+
+  document.getElementById('selectedInfo').textContent=
+    selectedFiles.length+' fichier(s) PNG chargé(s) depuis le poste.';
+  progress.textContent='Fichiers chargés. Analyse en cours…';
 
   await analyzeSelectedFolder();
 });
