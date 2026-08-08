@@ -42,49 +42,49 @@ export default function LogoutPage() {
         padding: 24,
         background:
           "radial-gradient(circle at 50% 38%, #233d55 0%, #182838 48%, #14222f 100%)",
-        color: "white",
+        color: "#fff",
         fontFamily: "Inter, Segoe UI, Arial, sans-serif",
       }}
     >
       <div
         style={{
-          width: "min(420px, 100%)",
+          width: "min(430px,100%)",
           textAlign: "center",
         }}
       >
-        <img
-          src="/generateur-etiquettes/Logo_DS_Label.png"
-          alt="Logo DS"
+        <div
           style={{
-            width: 205,
-            height: 108,
-            objectFit: "contain",
-            display: "block",
-            margin: "0 auto 10px",
-            background: "#182838",
-            mixBlendMode: "lighten",
+            marginBottom: 22,
+            fontFamily:
+              '"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",Impact,Arial,sans-serif',
+            fontSize: 36,
+            fontWeight: 900,
+            letterSpacing: "-.5px",
           }}
-        />
+        >
+          LABEL <span style={{ color: "#e1262b" }}>DS</span>
+        </div>
 
         <div
           style={{
-            background: "rgba(255,255,255,.98)",
+            background: "#fff",
             color: "#182838",
-            borderRadius: 14,
-            padding: "24px 26px",
+            borderRadius: 16,
+            padding: "30px 28px",
             boxShadow: "0 22px 60px rgba(0,0,0,.28)",
           }}
         >
           <div
             style={{
-              width: 42,
-              height: 42,
+              width: 48,
+              height: 48,
               borderRadius: "50%",
-              margin: "0 auto 14px",
+              margin: "0 auto 16px",
               display: "grid",
               placeItems: "center",
-              background: "#eef2f5",
-              fontSize: 22,
+              background: "#edf2f5",
+              color: "#182838",
+              fontSize: 23,
               fontWeight: 900,
             }}
           >
@@ -93,9 +93,10 @@ export default function LogoutPage() {
 
           <div
             style={{
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 900,
-              marginBottom: 7,
+              color: "#111",
+              marginBottom: 8,
             }}
           >
             Déconnexion sécurisée
@@ -103,13 +104,41 @@ export default function LogoutPage() {
 
           <div
             style={{
-              fontSize: 13,
-              lineHeight: 1.45,
-              color: "#647588",
+              color: "#657687",
+              fontSize: 13.5,
+              lineHeight: 1.5,
             }}
           >
             Fermeture de votre session LABEL DS…
           </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              height: 4,
+              borderRadius: 4,
+              overflow: "hidden",
+              background: "#edf1f4",
+            }}
+          >
+            <div
+              style={{
+                width: "72%",
+                height: "100%",
+                background: "#e1262b",
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 18,
+            color: "rgba(255,255,255,.62)",
+            fontSize: 12,
+          }}
+        >
+          Redirection vers la page de connexion…
         </div>
       </div>
     </main>
