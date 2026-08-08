@@ -23,7 +23,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--panel);color:var(--ink)}
-body{padding-top:325px}
+body{padding-top:245px}
 button,select,input{font:inherit}
 button{cursor:pointer}
 
@@ -33,14 +33,14 @@ button{cursor:pointer}
 header{
   position:fixed;
   top:0;left:0;right:0;
-  height:325px;
+  height:245px;
   z-index:1000;
   display:grid;
-  grid-template-columns:430px minmax(420px,1fr) 570px;
-  grid-template-rows:120px 175px;
-  column-gap:36px;
+  grid-template-columns:350px minmax(500px,1fr) 560px;
+  grid-template-rows:92px 128px;
+  column-gap:22px;
   align-items:center;
-  padding:16px 30px 14px;
+  padding:10px 24px 10px 6px;
   background:
     radial-gradient(circle at 45% 48%, rgba(255,255,255,.04), transparent 34%),
     linear-gradient(108deg,#182838 0%,#20374d 48%,#182838 100%);
@@ -51,8 +51,8 @@ header{
 .app-logo{
   grid-column:1;
   grid-row:1/3;
-  width:410px;
-  height:280px;
+  width:338px;
+  height:210px;
   max-width:none;
   object-fit:contain;
   justify-self:start;
@@ -67,19 +67,19 @@ header h1{
   margin:0;
   color:#fff;
   font-family:"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",Impact,Arial,sans-serif;
-  font-size:48px;
+  font-size:38px;
   line-height:.98;
   letter-spacing:-1.4px;
   font-weight:900;
   text-transform:uppercase;
-  max-width:560px;
+  max-width:600px;
 }
 header h1::after{
   content:"Exclusive by Detandt Simon SA";
   display:block;
-  margin-top:14px;
+  margin-top:10px;
   font-family:Inter,Segoe UI,Arial,sans-serif;
-  font-size:25px;
+  font-size:21px;
   line-height:1.1;
   letter-spacing:0;
   font-weight:700;
@@ -95,7 +95,7 @@ header .spacer{display:none}
 .header-nav{
   grid-column:3;
   grid-row:1;
-  height:112px;
+  height:88px;
   display:grid;
   grid-template-columns:repeat(4,1fr);
   align-self:end;
@@ -110,7 +110,7 @@ header .spacer{display:none}
   align-items:center;
   justify-content:center;
   gap:7px;
-  font-size:13px;
+  font-size:12px;
   font-weight:900;
   white-space:nowrap;
   border-bottom:4px solid transparent;
@@ -118,9 +118,9 @@ header .spacer{display:none}
 .header-nav a.active{border-bottom-color:var(--red)}
 .header-nav .nav-icon{
   display:block;
-  font-size:34px;
+  font-size:29px;
   line-height:1;
-  min-height:36px;
+  min-height:31px;
 }
 
 /* =========================
@@ -131,19 +131,19 @@ header .spacer{display:none}
   grid-row:2;
   display:grid;
   grid-template-columns:1fr 1fr;
-  grid-template-rows:77px 70px;
-  gap:12px;
+  grid-template-rows:56px 56px;
+  gap:8px;
   align-self:start;
-  padding-top:12px;
+  padding-top:8px;
 }
 .header-actions .btn{
   border-radius:7px;
-  padding:12px 16px;
-  font-size:15px;
+  padding:8px 12px;
+  font-size:12px;
   line-height:1.2;
   font-weight:900;
   text-transform:uppercase;
-  min-height:70px;
+  min-height:56px;
 }
 #headerAddBtn{
   background:transparent;
@@ -296,7 +296,7 @@ main{
   border:1px solid var(--line);
   border-radius:7px;
   overflow:auto;
-  max-height:calc(100vh - 455px);
+  max-height:calc(100vh - 375px);
 }
 table{
   width:100%;
@@ -445,7 +445,7 @@ tbody tr.selected{background:#edf3f7}
   z-index:5;
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:8px;
   padding:16px 18px;
   background:var(--ink);
   color:#fff;
@@ -475,6 +475,89 @@ tbody tr.selected{background:#edf3f7}
   font-weight:800;
   cursor:pointer;
   white-space:nowrap
+}
+
+
+/* =========================
+   BANDEAU REDUCTIBLE
+   ========================= */
+.header-collapse-toggle{
+  position:absolute;
+  left:50%;
+  bottom:-15px;
+  transform:translateX(-50%);
+  width:40px;
+  height:30px;
+  border:1px solid #cbd5dc;
+  border-top:0;
+  border-radius:0 0 18px 18px;
+  background:#fff;
+  color:var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:900;
+  z-index:1002;
+  box-shadow:0 3px 7px rgba(0,0,0,.12);
+  padding:0;
+}
+.header-collapse-toggle:hover{background:#f2f5f7}
+.header-collapse-toggle .arrow{
+  display:block;
+  line-height:1;
+  transition:transform .2s ease;
+}
+
+/* Mode replié : seul le menu de 4 pictos reste visible */
+body.header-collapsed{
+  padding-top:72px;
+}
+body.header-collapsed header{
+  height:72px;
+  display:block;
+  padding:0 18px;
+  background:var(--ink);
+}
+body.header-collapsed .app-logo,
+body.header-collapsed header h1,
+body.header-collapsed .header-actions,
+body.header-collapsed #logoutBtn{
+  display:none!important;
+}
+body.header-collapsed .header-nav{
+  position:absolute;
+  top:0;
+  right:20px;
+  width:540px;
+  height:72px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+}
+body.header-collapsed .header-nav a{
+  height:72px;
+  font-size:10.5px;
+  gap:4px;
+}
+body.header-collapsed .header-nav .nav-icon{
+  font-size:24px;
+  min-height:25px;
+}
+body.header-collapsed .header-collapse-toggle{
+  bottom:-15px;
+}
+body.header-collapsed .header-collapse-toggle .arrow{
+  transform:rotate(180deg);
+}
+body.header-collapsed .table-wrap{
+  max-height:calc(100vh - 202px);
+}
+
+@media(max-width:950px){
+  body.header-collapsed .header-nav{
+    width:100%;
+    right:0;
+  }
 }
 
 /* responsive */
@@ -555,6 +638,10 @@ tbody tr.selected{background:#edf3f7}
 
   <button class="btn outline" id="installPwaBtn" style="display:none" onclick="installLabelDsPwa()">Installer LABEL DS</button>
   <button class="btn outline" id="logoutBtn">Se déconnecter</button>
+  <button class="header-collapse-toggle" id="headerCollapseToggle" type="button"
+          title="Masquer le bandeau" aria-label="Masquer le bandeau" aria-expanded="true">
+    <span class="arrow">⌃</span>
+  </button>
 </header>
 <main>
   <section class="toolbar">
@@ -746,7 +833,32 @@ document.getElementById('headerClearDisplayedBtn')?.addEventListener('click',()=
 document.getElementById('headerClearCartBtn')?.addEventListener('click',()=>clearSelectionBtn.click());
 document.getElementById('headerCartNav')?.addEventListener('click',e=>{e.preventDefault();viewSelectionBtn.click()});
 document.getElementById('headerPreviewNav')?.addEventListener('click',e=>{e.preventDefault();previewBtn.click()});
+
 synchroniserNouvelleEntete();
+
+const HEADER_COLLAPSE_KEY='generateur_etiquettes_header_collapsed';
+const headerCollapseToggle=document.getElementById('headerCollapseToggle');
+
+function appliquerEtatBandeau(replie){
+  document.body.classList.toggle('header-collapsed',replie);
+  if(headerCollapseToggle){
+    headerCollapseToggle.setAttribute('aria-expanded',String(!replie));
+    headerCollapseToggle.setAttribute('aria-label',replie?'Afficher le bandeau':'Masquer le bandeau');
+    headerCollapseToggle.title=replie?'Afficher le bandeau':'Masquer le bandeau';
+  }
+  try{localStorage.setItem(HEADER_COLLAPSE_KEY,replie?'1':'0')}catch(e){}
+}
+
+try{
+  appliquerEtatBandeau(localStorage.getItem(HEADER_COLLAPSE_KEY)==='1');
+}catch(e){
+  appliquerEtatBandeau(false);
+}
+
+headerCollapseToggle?.addEventListener('click',()=>{
+  appliquerEtatBandeau(!document.body.classList.contains('header-collapsed'));
+});
+
 restaurerSelection();majPagination();loadActivites();
 </script>
 <script src="/pwa-register.js"></script>
