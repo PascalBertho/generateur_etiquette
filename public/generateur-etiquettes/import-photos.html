@@ -6,42 +6,38 @@
 <title>Import des photos produits</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#1c2b3a}
-  header{background:#1c2b3a;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:12px}
-  header h1{font-size:18px;margin:0;margin-right:auto}
-  main{max-width:1180px;margin:22px auto;padding:0 18px 30px}
-  .card{background:#fff;border:1px solid #d9e2e8;border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-  .warning{background:#fff5e8;border:1px solid #f0b66f;color:#744410}
-  .warning strong{display:block;margin-bottom:6px}
-  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .btn{border:0;border-radius:7px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer}
-  .btn-primary{background:#0f5f8c;color:#fff}
-  .btn-import{background:#e8722a;color:#fff}
-  .btn-secondary{background:#e8eef2;color:#1c2b3a}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .path{font-family:Consolas,monospace;background:#f1f4f6;padding:3px 6px;border-radius:4px}
-  .small{font-size:12px;color:#617382}
-  #selectedInfo{font-size:13px;font-weight:700}
-  .stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
-  .stat{background:#f6f8fa;border:1px solid #e1e7eb;border-radius:8px;padding:11px}
-  .stat b{display:block;font-size:21px;margin-bottom:3px}
-  .stat span{font-size:11px;color:#607383}
-  .table-wrap{overflow:auto;max-height:62vh;border:1px solid #d9e2e8;border-radius:8px}
-  table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
-  th{position:sticky;top:0;background:#1c2b3a;color:#fff;text-align:left;padding:9px;z-index:2}
-  td{padding:8px 9px;border-bottom:1px solid #e6ebee;vertical-align:top}
-  tr:nth-child(even) td{background:#fafbfc}
-  .status{font-weight:700}
-  .s-new{color:#067647}
-  .s-existing{color:#52606b}
-  .s-link{color:#0f5f8c}
-  .s-ambiguous{color:#b54708}
-  .s-none{color:#8b1e1e}
-  .s-error{color:#b42318}
-  #progress{margin-top:10px;font-size:13px;font-weight:700}
-  progress{width:100%;height:18px;margin-top:7px}
-  @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#1c2b3a}
+header{background:#1c2b3a;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;margin:0;margin-right:auto}
+main{max-width:1180px;margin:22px auto;padding:0 18px 30px}
+.card{background:#fff;border:1px solid #d9e2e8;border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.warning{background:#fff5e8;border:1px solid #f0b66f;color:#744410}
+.warning strong{display:block;margin-bottom:6px}
+.error-box{display:none;background:#fff1f0;border:1px solid #f0a29b;color:#8b1e1e;border-radius:8px;padding:12px 14px;margin-top:12px;white-space:pre-wrap}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:0;border-radius:7px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer}
+.btn-primary{background:#0f5f8c;color:#fff}
+.btn-import{background:#e8722a;color:#fff}
+.btn-secondary{background:#e8eef2;color:#1c2b3a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.path{font-family:Consolas,monospace;background:#f1f4f6;padding:3px 6px;border-radius:4px}
+.small{font-size:12px;color:#617382}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
+.stat{background:#f6f8fa;border:1px solid #e1e7eb;border-radius:8px;padding:11px}
+.stat b{display:block;font-size:21px;margin-bottom:3px}
+.stat span{font-size:11px;color:#607383}
+.table-wrap{overflow:auto;max-height:62vh;border:1px solid #d9e2e8;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+th{position:sticky;top:0;background:#1c2b3a;color:#fff;text-align:left;padding:9px;z-index:2}
+td{padding:8px 9px;border-bottom:1px solid #e6ebee;vertical-align:top}
+tr:nth-child(even) td{background:#fafbfc}
+.status{font-weight:700}
+.s-new{color:#067647}.s-existing{color:#52606b}.s-link{color:#0f5f8c}
+.s-ambiguous{color:#b54708}.s-none{color:#8b1e1e}.s-error{color:#b42318}
+#progress{margin-top:10px;font-size:13px;font-weight:700}
+progress{width:100%;height:18px;margin-top:7px}
+@media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -55,14 +51,13 @@
     <strong>Accès réseau / VPN requis</strong>
     Les photos produits se trouvent dans
     <span class="path">Q:\Commun\Generateur Etiquette\Photos produits</span>.
-    Avant de continuer, vérifiez que vous êtes connecté au réseau de l'entreprise
-    ou au VPN et que le lecteur <b>Q:</b> est accessible.
+    Vérifiez que le VPN est actif et que le lecteur <b>Q:</b> est accessible.
   </section>
 
   <section class="card">
     <div class="actions">
-      <button class="btn btn-primary" id="folderBtn" type="button">Charger les fichiers PNG du dossier Q:</button>
-      <input id="folderInput" type="file" accept=".png,image/png" multiple hidden>
+      <button class="btn btn-primary" id="filesBtn" type="button">Charger les PNG du dossier Q:</button>
+      <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
       <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
     </div>
 
@@ -70,12 +65,11 @@
       <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossier attendu</div>
       <div class="path">Q:\Commun\Generateur Etiquette\Photos produits</div>
       <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:700">
-        En attente d'accès au dossier réseau.
+        Aucun fichier chargé.
       </div>
       <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
-        Cliquez sur « Charger les fichiers PNG du dossier Q: », ouvrez le dossier indiqué ci-dessus,
-        faites <b>Ctrl+A</b> pour sélectionner les PNG puis cliquez sur <b>Ouvrir</b>.
-        L'analyse démarre automatiquement dès que les fichiers sont chargés.
+        Cliquez sur « Charger les PNG du dossier Q: », ouvrez le dossier ci-dessus,
+        faites <b>Ctrl+A</b>, puis cliquez sur <b>Ouvrir</b>.
       </div>
     </div>
 
@@ -83,8 +77,10 @@
       Les fichiers déjà présents dans le bucket <b>articles_photo</b> ne sont jamais remplacés.
       Les fichiers du lecteur Q: ne sont jamais modifiés ni supprimés.
     </p>
-    <div id="progress" style="margin-top:10px;font-size:13px;font-weight:700"></div>
+
+    <div id="progress"></div>
     <progress id="progressBar" value="0" max="100" hidden></progress>
+    <div id="errorBox" class="error-box"></div>
   </section>
 
   <section id="statsCard" class="card" hidden>
@@ -126,39 +122,128 @@ let fileByName=new Map();
 let analysisRows=[];
 let supabaseClient=null;
 
-const folderBtn=document.getElementById('folderBtn');
-const folderInput=document.getElementById('folderInput');
+const filesBtn=document.getElementById('filesBtn');
+const filesInput=document.getElementById('filesInput');
 const importBtn=document.getElementById('importBtn');
+const selectedInfo=document.getElementById('selectedInfo');
+const userInfo=document.getElementById('userInfo');
 const progress=document.getElementById('progress');
 const progressBar=document.getElementById('progressBar');
-const userInfo=document.getElementById('userInfo');
+const errorBox=document.getElementById('errorBox');
 
 function esc(v){
   return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-async function analyzeSelectedFolder(){
+function showError(title,detail){
+  errorBox.style.display='block';
+  errorBox.textContent=title+(detail?'\n\n'+detail:'');
+}
+function clearError(){
+  errorBox.style.display='none';
+  errorBox.textContent='';
+}
+
+async function api(payload){
+  let response;
+  try{
+    response=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  }catch(e){
+    throw new Error('Impossible de contacter /api/photos/import : '+(e.message||String(e)));
+  }
+
+  const raw=await response.text();
+  let data={};
+
+  if(raw){
+    try{
+      data=JSON.parse(raw);
+    }catch(e){
+      throw new Error('Réponse serveur invalide (HTTP '+response.status+') : '+raw.slice(0,500));
+    }
+  }
+
+  if(!response.ok){
+    const parts=[];
+    if(data.error) parts.push(data.error);
+    if(data.stage) parts.push('Étape : '+data.stage);
+    if(data.detail) parts.push('Détail : '+data.detail);
+    throw new Error(parts.join(' — ') || ('Erreur HTTP '+response.status));
+  }
+
+  return data;
+}
+
+function statusLabel(row){
+  switch(row.action){
+    case 'upload': return ['À importer','s-new'];
+    case 'existing': return ['Déjà présente — non remplacée','s-existing'];
+    case 'link-only': return ['Liaison DB uniquement','s-link'];
+    case 'ambiguous': return ['Ambiguë — ignorée','s-ambiguous'];
+    case 'no-match': return ['Sans article — ignorée','s-none'];
+    case 'error': return ['Erreur','s-error'];
+    default: return [row.action||'',''];
+  }
+}
+
+function renderRows(){
+  const body=document.getElementById('resultBody');
+  body.innerHTML=analysisRows.map(r=>{
+    const [label,cls]=statusLabel(r);
+    return `<tr>
+      <td>${esc(r.sourceName||'')}</td>
+      <td>${esc(r.articleNumero||'')}</td>
+      <td>${esc(r.targetName||'')}</td>
+      <td>${esc(r.matchType||'')}</td>
+      <td class="status ${cls}">${esc(label)}</td>
+      <td>${esc(r.detail||'')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats(){
+  const count=a=>analysisRows.filter(r=>r.action===a).length;
+  document.getElementById('stFiles').textContent=selectedFiles.length;
+  document.getElementById('stNew').textContent=count('upload');
+  document.getElementById('stExisting').textContent=count('existing');
+  document.getElementById('stLink').textContent=count('link-only');
+  document.getElementById('stAmbiguous').textContent=count('ambiguous');
+  document.getElementById('stNone').textContent=count('no-match');
+  document.getElementById('statsCard').hidden=false;
+  document.getElementById('tableCard').hidden=false;
+}
+
+async function analyzeSelectedFiles(){
+  clearError();
   importBtn.disabled=true;
   document.getElementById('statsCard').hidden=true;
   document.getElementById('tableCard').hidden=true;
 
   if(!selectedFiles.length){
-    document.getElementById('selectedInfo').textContent='Aucun fichier PNG détecté.';
-    userInfo.textContent='Vérifiez que vous avez bien ouvert le dossier Q:\\Commun\\Generateur Etiquette\\Photos produits et que le VPN / lecteur Q: est accessible.';
-    progress.textContent='';
+    selectedInfo.textContent='Aucun fichier PNG sélectionné.';
+    userInfo.textContent='Sélectionnez les fichiers PNG avant de lancer l’analyse.';
     return;
   }
 
-  document.getElementById('selectedInfo').textContent=selectedFiles.length+' fichier(s) PNG détecté(s).';
-  userInfo.textContent='Analyse en cours : recherche des correspondances avec les articles et contrôle du bucket Supabase…';
+  selectedInfo.textContent=selectedFiles.length+' fichier(s) PNG chargé(s).';
+  userInfo.textContent='Analyse en cours : correspondances articles + contrôle du bucket Supabase…';
   progress.textContent='Analyse en cours…';
 
   try{
     const data=await api({
       action:'analyze',
-      files:selectedFiles.map(f=>({name:f.name,size:f.size,lastModified:f.lastModified}))
+      files:selectedFiles.map(f=>({
+        name:f.name,
+        size:f.size,
+        lastModified:f.lastModified
+      }))
     });
-    analysisRows=data.rows||[];
+
+    analysisRows=Array.isArray(data.rows)?data.rows:[];
     renderRows();
     renderStats();
 
@@ -172,48 +257,41 @@ async function analyzeSelectedFolder(){
       aImporter+' élément(s) à traiter, '+
       deja+' déjà présent(s), '+
       ambigus+' ambigu(s), '+
-      sans+' sans correspondance. '+
-      (aImporter ? 'Vous pouvez maintenant cliquer sur « Lancer l’import ».' : 'Aucun import n’est nécessaire.');
+      sans+' sans correspondance.';
 
     importBtn.disabled=aImporter===0;
   }catch(e){
     progress.textContent='Erreur pendant l’analyse.';
-    userInfo.innerHTML='<b>Analyse impossible :</b> '+esc(e.message||String(e))+
-      '<br><span style="color:#8b1e1e">Aucun fichier du lecteur Q: n’a été modifié ou supprimé.</span>';
-    importBtn.disabled=true;
+    userInfo.textContent='L’analyse a échoué. Le détail est affiché ci-dessous.';
+    showError('Analyse impossible',e.message||String(e));
     console.error('Erreur analyse photos',e);
   }
 }
 
-folderBtn.addEventListener('click',()=>{
-  importBtn.disabled=true;
+filesBtn.addEventListener('click',()=>{
+  clearError();
+  filesInput.value='';
   progress.textContent='Sélection des fichiers en attente…';
   userInfo.innerHTML=
-    'Dans la fenêtre Windows, allez dans <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
-    'faites <b>Ctrl+A</b> pour sélectionner tous les fichiers PNG puis cliquez sur <b>Ouvrir</b>.';
-  folderInput.value='';
-  folderInput.click();
+    'Dans Windows, ouvrez <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
+    'faites <b>Ctrl+A</b> puis cliquez sur <b>Ouvrir</b>.';
+  filesInput.click();
 });
 
-folderInput.addEventListener('change',async()=>{
-  selectedFiles=[...folderInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
+filesInput.addEventListener('change',async()=>{
+  clearError();
+  selectedFiles=[...filesInput.files].filter(f=>f.name.toLowerCase().endsWith('.png'));
   fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
 
   if(!selectedFiles.length){
-    document.getElementById('selectedInfo').textContent='Aucun fichier PNG sélectionné.';
-    userInfo.innerHTML=
-      'Vérifiez le VPN et l’accès au lecteur Q:, puis ouvrez <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
-      'faites <b>Ctrl+A</b> puis cliquez sur <b>Ouvrir</b>.';
-    progress.textContent='Aucun fichier chargé.';
+    selectedInfo.textContent='Aucun PNG sélectionné.';
+    userInfo.textContent='Vérifiez le VPN et l’accès au lecteur Q:.';
+    progress.textContent='';
     importBtn.disabled=true;
     return;
   }
 
-  document.getElementById('selectedInfo').textContent=
-    selectedFiles.length+' fichier(s) PNG chargé(s) depuis le poste.';
-  progress.textContent='Fichiers chargés. Analyse en cours…';
-
-  await analyzeSelectedFolder();
+  await analyzeSelectedFiles();
 });
 
 async function ensureSupabaseClient(config){
@@ -224,11 +302,12 @@ async function ensureSupabaseClient(config){
 }
 
 importBtn.addEventListener('click',async()=>{
+  clearError();
   const todo=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only');
   if(!todo.length) return;
 
   importBtn.disabled=true;
-
+  filesBtn.disabled=true;
   progressBar.hidden=false;
   progressBar.max=todo.length;
   progressBar.value=0;
@@ -237,7 +316,7 @@ importBtn.addEventListener('click',async()=>{
 
   for(let i=0;i<todo.length;i++){
     const row=todo[i];
-    progress.textContent=`Traitement ${i+1}/${todo.length} — ${row.articleNumero || row.sourceName}`;
+    progress.textContent=`Traitement ${i+1}/${todo.length} — ${row.articleNumero||row.sourceName}`;
 
     try{
       if(row.action==='link-only'){
@@ -258,20 +337,20 @@ importBtn.addEventListener('click',async()=>{
         });
 
         if(prep.alreadyExists){
-          // Double contrôle côté serveur : ne jamais écraser.
           await api({
             action:'confirm',
             articleNumero:row.articleNumero,
             targetName:row.targetName
           });
           row.action='existing';
-          row.detail='Photo apparue entre-temps dans le bucket ; non remplacée.';
+          row.detail='Photo déjà présente ; non remplacée.';
           skipped++;
         }else{
           const file=fileByName.get(String(row.sourceName).toLowerCase());
           if(!file) throw new Error('Fichier source introuvable dans la sélection.');
 
           const client=await ensureSupabaseClient(prep);
+
           const {error:uploadError}=await client.storage
             .from(BUCKET)
             .uploadToSignedUrl(prep.path,prep.token,file,{
@@ -288,7 +367,7 @@ importBtn.addEventListener('click',async()=>{
           });
 
           row.action='existing';
-          row.detail='Importée avec succès ; fichier source Q: conservé.';
+          row.detail='Importée avec succès ; fichier Q: conservé.';
           ok++;
         }
       }
@@ -303,9 +382,14 @@ importBtn.addEventListener('click',async()=>{
   }
 
   progress.textContent=`Terminé — ${ok} traité(s), ${skipped} déjà présent(s), ${errors} erreur(s).`;
+  filesBtn.disabled=false;
 
-  // Réanalyse recommandée pour refléter exactement l'état du bucket.
-  setTimeout(()=>{ analyzeSelectedFolder(); },500);
+  if(errors){
+    showError('Certaines photos n’ont pas pu être importées',
+      'Consultez la colonne Détail du tableau pour identifier les erreurs.');
+  }
+
+  await analyzeSelectedFiles();
 });
 </script>
 </body>
