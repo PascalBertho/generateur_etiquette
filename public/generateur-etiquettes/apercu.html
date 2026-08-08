@@ -254,17 +254,346 @@
     body[data-format="140x30"] .etq{width:140mm!important;height:30mm!important;min-width:140mm!important;max-width:140mm!important;min-height:30mm!important;max-height:30mm!important;flex:0 0 30mm!important;transform:none!important;zoom:1!important}
     body[data-format="150x39"] .etq{width:150mm!important;height:39mm!important;min-width:150mm!important;max-width:150mm!important;min-height:39mm!important;max-height:39mm!important;flex:0 0 39mm!important;transform:none!important;zoom:1!important}
   }
+
+/* ==========================================================
+   THEME APPLICATION - APERCU
+   ========================================================== */
+:root{
+  --ink:#182838;
+  --ink2:#20384f;
+  --soft:#66788a;
+  --line:#d8e0e6;
+  --panel:#f6f7f8;
+  --red:#e1262b;
+  --red-dark:#c91e23;
+  --sand:#e2b985;
+  --orange:#e8722a;
+}
+
+html,body{
+  background:var(--panel);
+  color:var(--ink);
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+}
+
+.toolbar{
+  position:sticky;
+  top:0;
+  z-index:1000;
+  min-height:88px;
+  padding:8px 18px;
+  display:grid;
+  grid-template-columns:180px minmax(320px,1fr) 560px;
+  gap:18px;
+  align-items:center;
+  background:
+    radial-gradient(circle at 45% 48%, rgba(255,255,255,.04), transparent 34%),
+    linear-gradient(108deg,#182838 0%,#20374d 48%,#182838 100%);
+  color:#fff;
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+}
+
+.preview-brand{
+  display:flex;
+  align-items:center;
+}
+.preview-brand-logo{
+  width:165px;
+  height:70px;
+  object-fit:contain;
+  background:#182838;
+  mix-blend-mode:lighten;
+}
+
+.preview-title-wrap{
+  min-width:0;
+}
+.preview-title-line{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.toolbar h1{
+  margin:0;
+  font-family:"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",Impact,Arial,sans-serif;
+  font-size:26px;
+  line-height:1;
+  text-transform:uppercase;
+  letter-spacing:-.3px;
+  font-weight:900;
+}
+.preview-count-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:5px 10px;
+  border-radius:7px;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.preview-subtitle{
+  margin-top:6px;
+  color:#d7e0e7;
+  font-size:11.5px;
+}
+
+.preview-nav{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+  height:72px;
+}
+.preview-nav a{
+  color:#fff;
+  text-decoration:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  font-size:10.5px;
+  font-weight:900;
+  white-space:nowrap;
+  border-bottom:3px solid transparent;
+}
+.preview-nav a.active{border-bottom-color:var(--red)}
+.preview-nav .nav-icon{
+  display:block;
+  font-size:24px;
+  line-height:1;
+}
+
+.preview-actions{
+  position:sticky;
+  top:88px;
+  z-index:900;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  align-items:center;
+  padding:12px 22px;
+  background:rgba(246,247,248,.96);
+  backdrop-filter:blur(7px);
+  border-bottom:1px solid var(--line);
+}
+
+.preview-actions .btn{
+  min-height:42px;
+  padding:9px 14px;
+  border-radius:7px;
+  font-size:12px;
+  font-weight:850;
+}
+.btn-format{
+  background:#182838;
+  color:#fff;
+  border:1px solid #182838;
+}
+.btn-format:hover{background:#243d53}
+.btn-back{
+  background:#fff;
+  color:#182838;
+  border:1px solid #b8c4cc;
+}
+.btn-print{
+  background:var(--orange);
+  color:#fff;
+  border:1px solid var(--orange);
+}
+.btn-print:hover{filter:brightness(.97)}
+
+.preview-layout{
+  display:grid;
+  grid-template-columns:180px minmax(0,1fr);
+  gap:18px;
+  max-width:1260px;
+  margin:0 auto;
+  padding:18px 20px 30px;
+  align-items:start;
+}
+
+.preview-side{
+  position:sticky;
+  top:154px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.preview-side h3{
+  margin:0 0 12px;
+  font-size:14px;
+  color:#182838;
+}
+.preview-side-row{
+  padding:10px 0;
+  border-top:1px solid #edf1f4;
+}
+.preview-side-row:first-of-type{border-top:0}
+.preview-side-label{
+  display:block;
+  color:var(--soft);
+  font-size:11px;
+  margin-bottom:3px;
+}
+.preview-side-value{
+  display:block;
+  color:#182838;
+  font-size:12.5px;
+  font-weight:850;
+}
+
+#sheets-wrap{
+  min-width:0;
+  padding:0;
+}
+.sheet{
+  border-radius:4px;
+  box-shadow:0 2px 10px rgba(0,0,0,.14);
+}
+.page-label{
+  color:#52697b;
+  font-size:10px;
+}
+
+.preview-bottom{
+  position:sticky;
+  bottom:0;
+  z-index:850;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:9px 12px;
+  background:rgba(246,247,248,.96);
+  backdrop-filter:blur(7px);
+  border-top:1px solid var(--line);
+}
+.zoom-btn{
+  width:34px;
+  height:32px;
+  border-radius:6px;
+  border:1px solid #c5d0d7;
+  background:#fff;
+  color:#182838;
+  font-weight:900;
+  cursor:pointer;
+}
+.zoom-value{
+  min-width:52px;
+  text-align:center;
+  font-size:12px;
+  font-weight:850;
+  color:#182838;
+}
+
+body.preview-zoom-90 #sheets-wrap{transform:scale(.9);transform-origin:top center}
+body.preview-zoom-80 #sheets-wrap{transform:scale(.8);transform-origin:top center}
+body.preview-zoom-110 #sheets-wrap{transform:scale(1.1);transform-origin:top center}
+
+@media(max-width:1050px){
+  .toolbar{
+    grid-template-columns:140px 1fr;
+    grid-template-rows:auto auto;
+  }
+  .preview-brand-logo{width:130px;height:58px}
+  .preview-nav{grid-column:1/-1}
+  .preview-actions{top:136px}
+  .preview-layout{grid-template-columns:1fr}
+  .preview-side{position:static;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .preview-side h3{grid-column:1/-1}
+}
+
+@media print{
+  .preview-actions,
+  .preview-side,
+  .preview-bottom,
+  .preview-nav,
+  .preview-brand,
+  .preview-title-wrap{
+    display:none!important;
+  }
+  .preview-layout{
+    display:block!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  body[class*="preview-zoom-"] #sheets-wrap{
+    transform:none!important;
+  }
+}
+
 </style>
 </head>
 <body data-format="140x30">
 <header class="toolbar">
-  <h1 id="previewTitle">Aperçu des étiquettes — modèle Liège 140 × 30 mm</h1>
-  <span class="info" id="countInfo"></span>
-  <button class="btn btn-format" id="formatBtn" type="button">Passer en 150 × 39 mm</button>
-  <button class="btn btn-back" id="backBtn">Retour</button>
-  <button class="btn btn-print" id="printBtn">Imprimer / PDF</button>
+  <div class="preview-brand">
+    <img class="preview-brand-logo" src="/generateur-etiquettes/Logo_DS_Label.png" alt="Logo DS" onerror="this.style.display='none'">
+  </div>
+
+  <div class="preview-title-wrap">
+    <div class="preview-title-line">
+      <h1 id="previewTitle">Aperçu des étiquettes</h1>
+      <span class="preview-count-badge" id="countInfo">0 étiquette</span>
+    </div>
+    <div class="preview-subtitle" id="previewSubtitle">Modèle Liège 140 × 30 mm</div>
+  </div>
+
+  <nav class="preview-nav" aria-label="Navigation principale">
+    <a href="/generateur-etiquettes/">
+      <span class="nav-icon">⌂</span>
+      <span>ACCUEIL</span>
+    </a>
+    <a href="/generateur-etiquettes/import-photos.html">
+      <span class="nav-icon">⇧</span>
+      <span>IMPORT PHOTOS</span>
+    </a>
+    <a href="/generateur-etiquettes/" id="previewCartNav">
+      <span class="nav-icon">🛒</span>
+      <span>PANIER</span>
+    </a>
+    <a href="#" class="active">
+      <span class="nav-icon">▤</span>
+      <span>APERÇU ÉTIQUETTES</span>
+    </a>
+  </nav>
 </header>
-<div id="sheets-wrap"></div>
+
+<div class="preview-actions">
+  <button class="btn btn-format" id="formatBtn" type="button">Passer en 150 × 39 mm</button>
+  <button class="btn btn-back" id="backBtn" type="button">Retour</button>
+  <button class="btn btn-print" id="printBtn" type="button">Imprimer / PDF</button>
+</div>
+<main class="preview-layout">
+  <aside class="preview-side">
+    <h3>Paramètres</h3>
+    <div class="preview-side-row">
+      <span class="preview-side-label">Modèle</span>
+      <span class="preview-side-value" id="sideFormat">Liège 140 × 30 mm</span>
+    </div>
+    <div class="preview-side-row">
+      <span class="preview-side-label">Étiquettes par page</span>
+      <span class="preview-side-value" id="sidePerPage">8</span>
+    </div>
+    <div class="preview-side-row">
+      <span class="preview-side-label">Total étiquettes</span>
+      <span class="preview-side-value" id="sideTotal">0</span>
+    </div>
+  </aside>
+  <div id="sheets-wrap"></div>
+</main>
+
+<div class="preview-bottom">
+  <button class="zoom-btn" id="zoomOutBtn" type="button">−</button>
+  <span class="zoom-value" id="zoomValue">100%</span>
+  <button class="zoom-btn" id="zoomInBtn" type="button">+</button>
+</div>
 <script>
 const LABEL_FORMATS = {
   '140x30': { label:'Liège 140 × 30 mm', perPage:8 },
@@ -427,7 +756,11 @@ function render(){
   const rows=lireSelection();
   const cfg=LABEL_FORMATS[currentFormat];
   document.body.dataset.format=currentFormat;
-  document.getElementById('previewTitle').textContent='Aperçu des étiquettes — modèle '+cfg.label;
+  document.getElementById('previewTitle').textContent='Aperçu des étiquettes';
+  document.getElementById('previewSubtitle').textContent='Modèle '+cfg.label;
+  document.getElementById('sideFormat').textContent=cfg.label;
+  document.getElementById('sidePerPage').textContent=cfg.perPage;
+  document.getElementById('sideTotal').textContent=rows.length;
   document.getElementById('formatBtn').textContent=currentFormat==='140x30' ? 'Passer en 150 × 39 mm' : 'Passer en 140 × 30 mm';
   wrap.innerHTML='';
   document.getElementById('countInfo').textContent=rows.length+' étiquette'+(rows.length>1?'s':'');
@@ -463,6 +796,23 @@ try{
   const saved=localStorage.getItem('etiquettes_format');
   if(LABEL_FORMATS[saved]) currentFormat=saved;
 }catch(e){}
+
+let previewZoom=100;
+function applyPreviewZoom(){
+  document.body.classList.remove('preview-zoom-80','preview-zoom-90','preview-zoom-110');
+  if(previewZoom!==100) document.body.classList.add('preview-zoom-'+previewZoom);
+  document.getElementById('zoomValue').textContent=previewZoom+'%';
+}
+document.getElementById('zoomOutBtn')?.addEventListener('click',()=>{
+  previewZoom=Math.max(80,previewZoom-10);
+  applyPreviewZoom();
+});
+document.getElementById('zoomInBtn')?.addEventListener('click',()=>{
+  previewZoom=Math.min(110,previewZoom+10);
+  applyPreviewZoom();
+});
+applyPreviewZoom();
+
 render();
 </script>
 </body>
