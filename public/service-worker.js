@@ -1,4 +1,4 @@
-const CACHE_NAME = "label-ds-v2";
+const CACHE_NAME = "label-ds-v3";
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
   "/label-ds-192.png",
@@ -30,20 +30,24 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Ne jamais mettre les API en cache.
-  if (url.pathname.startsWith("/api/")) return;
+  // Ne jamais mettre en cache les appels API.
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
-  // Navigation : réseau d'abord.
+  // Navigation : réseau d'abord, pour toujours charger la dernière version.
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match("/generateur-etiquettes/"))
+      fetch(event.request).catch(() =>
+        caches.match("/generateur-etiquettes/")
+      )
     );
     return;
   }
 
+  // Ressources statiques : cache puis réseau.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });

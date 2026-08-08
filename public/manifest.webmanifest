@@ -1,14 +1,15 @@
 {
-  "id": "/generateur-etiquettes/",
+  "id": "/",
   "name": "LABEL DS - Générateur d'étiquettes",
   "short_name": "LABEL DS",
   "description": "Générateur d'étiquettes produit Detandt Simon SA",
   "lang": "fr-BE",
   "start_url": "/generateur-etiquettes/",
-  "scope": "/generateur-etiquettes/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#182838",
   "theme_color": "#182838",
+  "orientation": "any",
   "icons": [
     {
       "src": "/label-ds-192.png",
