@@ -112,7 +112,8 @@ header .spacer{display:none}
   gap:7px;
   font-size:12px;
   font-weight:900;
-  white-space:nowrap;
+  white-space:normal;
+  line-height:1.15;
   border-bottom:4px solid transparent;
 }
 .header-nav a.active{border-bottom-color:var(--red)}
@@ -1025,7 +1026,7 @@ body.header-collapsed #logoutBtn{
 }
 #selectAllRowsBtn{
   width:100%;
-  height:47px;
+  height:52px;
   border:1px solid #182838;
   border-radius:7px;
   background:#182838;
@@ -1101,7 +1102,7 @@ body.header-collapsed #logoutBtn{
       <div class="field"><label>Groupe</label><select id="filterGroupe"><option value="Tous">Tous</option></select></div>
       <div class="field wide"><label>Recherche article</label><input id="articleSearch" type="search" placeholder="Référence DS, famille ou libellé"></div>
       <div class="select-all-action">
-        <button type="button" id="selectAllRowsBtn">Sélectionner Tout</button>
+        <button type="button" id="selectAllRowsBtn">Sélectionner toute<br>la liste affichée</button>
       </div>
 <!-- Le bouton Photo historique est conservé pour garder son script intact,
            mais il est masqué pour le moment. -->
@@ -1139,11 +1140,10 @@ body.header-collapsed #logoutBtn{
     <div class="status" id="status"></div>
   </section>
 
-  <input id="selectDisplayedCheck" type="checkbox" hidden aria-hidden="true">
   <section class="table-wrap">
     <table>
       <thead><tr>
-        <th class="check-col" aria-label="Sélection des lignes"></th>
+        <th class="check-col"><span class="tooltip check-tooltip" data-tooltip="Sélectionner ou désélectionner toutes les lignes actuellement affichées."><input id="selectDisplayedCheck" type="checkbox" aria-label="Sélectionner toutes les lignes affichées"></span></th>
         <th data-sort="numero">Référence DS</th><th data-sort="refFournisseur">Référence fournisseur</th><th data-sort="groupe">Groupe</th><th data-sort="famille">Famille</th><th data-sort="libelle">Libellé</th><th data-sort="secteur">Secteur</th><th data-sort="prix">Prix</th><th data-sort="barcode">Code à barre</th><th data-sort="barcode">Aperçu code barre</th><th data-sort="photo">Photo actuelle</th>
       </tr></thead>
       <tbody id="articlesBody"></tbody>
@@ -1299,7 +1299,7 @@ function majBoutonSelectionTout(){
   if(!selectAllRowsBtn) return;
   const rows=articlesAffiches();
   const tousSelectionnes=rows.length>0 && rows.every(a=>listSelection.has(String(a.numero)));
-  selectAllRowsBtn.textContent=tousSelectionnes?'Désélectionner Tout':'Sélectionner Tout';
+  selectAllRowsBtn.innerHTML=tousSelectionnes?'Désélectionner toute<br>la liste affichée':'Sélectionner toute<br>la liste affichée';
   selectAllRowsBtn.classList.toggle('active',tousSelectionnes);
   selectAllRowsBtn.disabled=rows.length===0;
 }
