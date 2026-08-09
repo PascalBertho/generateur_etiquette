@@ -1298,20 +1298,43 @@ const selectAllRowsBtn=document.getElementById('selectAllRowsBtn');
 function majBoutonSelectionTout(){
   if(!selectAllRowsBtn) return;
   const rows=articlesAffiches();
-  const tousSelectionnes=rows.length>0 && rows.every(a=>listSelection.has(String(a.numero)));
-  selectAllRowsBtn.innerHTML=tousSelectionnes?'Désélectionner toute<br>la liste affichée':'Sélectionner toute<br>la liste affichée';
+  const refsVisibles=rows.map(a=>String(a.numero));
+  const nbSelectionnes=refsVisibles.reduce(
+    (n,ref)=>n+(listSelection.has(ref)?1:0),
+    0
+  );
+  const tousSelectionnes=refsVisibles.length>0 && nbSelectionnes===refsVisibles.length;
+
+  selectAllRowsBtn.innerHTML=tousSelectionnes
+    ? 'Désélectionner toute<br>la liste affichée'
+    : 'Sélectionner toute<br>la liste affichée';
+
   selectAllRowsBtn.classList.toggle('active',tousSelectionnes);
-  selectAllRowsBtn.disabled=rows.length===0;
+  selectAllRowsBtn.disabled=refsVisibles.length===0;
 }
 selectAllRowsBtn?.addEventListener('click',()=>{
   const rows=articlesAffiches();
   if(!rows.length) return;
-  const tousSelectionnes=rows.every(a=>listSelection.has(String(a.numero)));
+
+  const refsVisibles=rows.map(a=>String(a.numero));
+  const nbSelectionnes=refsVisibles.reduce(
+    (n,ref)=>n+(listSelection.has(ref)?1:0),
+    0
+  );
+  const tousSelectionnes=nbSelectionnes===refsVisibles.length;
+
   if(tousSelectionnes){
-    rows.forEach(a=>listSelection.delete(String(a.numero)));
+    refsVisibles.forEach(ref=>listSelection.delete(ref));
   }else{
-    rows.forEach(a=>listSelection.add(String(a.numero)));
+    refsVisibles.forEach(ref=>listSelection.add(ref));
   }
+
+  const selectAll=document.getElementById('selectDisplayedCheck');
+  if(selectAll){
+    selectAll.checked=!tousSelectionnes;
+    selectAll.indeterminate=false;
+  }
+
   render();
 });
 
