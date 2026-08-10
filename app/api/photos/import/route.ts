@@ -28,12 +28,23 @@ function autorise(request: NextRequest): boolean {
 function config() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!url || !key) {
     throw new Error(
       "Configuration Supabase incomplète : SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis",
     );
   }
-  return { url, key };
+
+  if (!anonKey) {
+    throw new Error(
+      "Configuration Supabase incomplète : SUPABASE_ANON_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY est requis pour l'import signé",
+    );
+  }
+
+  return { url, key, anonKey };
 }
 
 function headersSupabase(extra: Record<string, string> = {}) {
@@ -382,15 +393,25 @@ export async function POST(request: NextRequest) {
 
       // Double contrôle juste avant l'upload : ne jamais remplacer un fichier existant.
       if (await objetExiste(targetName)) {
-        return NextResponse.json({ alreadyExists: true, path: targetName });
+        const { url, anonKey } = config();
+        return NextResponse.json({
+          alreadyExists: true,
+          path: targetName,
+          supabaseUrl: url,
+          supabaseAnonKey: anonKey,
+        });
       }
 
       const signed = await creerUploadSigne(targetName);
+      const { url, anonKey } = config();
+
       return NextResponse.json({
         alreadyExists: false,
         path: targetName,
         signedUrl: signed.signedUrl,
         token: signed.token,
+        supabaseUrl: url,
+        supabaseAnonKey: anonKey,
       });
     }
 

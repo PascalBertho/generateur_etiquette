@@ -532,6 +532,11 @@ async function api(payload){
     }
   }
 
+  if(response.status===401){
+    location.href='/login?next=/generateur-etiquettes/import-photos.html';
+    throw new Error('Session expirée. Reconnexion nécessaire.');
+  }
+
   if(!response.ok){
     const parts=[];
     if(data.error) parts.push(data.error);
@@ -718,8 +723,29 @@ filesInput.addEventListener('change',async()=>{
 
 async function ensureSupabaseClient(config){
   if(supabaseClient) return supabaseClient;
-  if(!window.supabase) throw new Error('Bibliothèque Supabase indisponible.');
-  supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
+
+  if(!window.supabase){
+    throw new Error('Bibliothèque Supabase indisponible.');
+  }
+
+  if(!config?.supabaseUrl || !config?.supabaseAnonKey){
+    throw new Error(
+      'Configuration Supabase publique absente de la réponse prepare. ' +
+      'Vérifiez SUPABASE_ANON_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY dans Vercel.'
+    );
+  }
+
+  supabaseClient=window.supabase.createClient(
+    config.supabaseUrl,
+    config.supabaseAnonKey,
+    {
+      auth:{
+        persistSession:false,
+        autoRefreshToken:false
+      }
+    }
+  );
+
   return supabaseClient;
 }
 
@@ -773,23 +799,40 @@ importBtn.addEventListener('click',async()=>{
 
           const client=await ensureSupabaseClient(prep);
 
-          const {error:uploadError}=await client.storage
+          const {data:uploadData,error:uploadError}=await client.storage
             .from(BUCKET)
             .uploadToSignedUrl(prep.path,prep.token,file,{
               contentType:'image/png',
               cacheControl:'3600'
             });
 
-          if(uploadError) throw uploadError;
+          if(uploadError){
+            throw new Error(
+              'Upload Storage refusé : ' +
+              (uploadError.message||String(uploadError))
+            );
+          }
 
-          await api({
+          if(!uploadData){
+            throw new Error(
+              'Supabase n\'a retourné aucune confirmation après l\'upload.'
+            );
+          }
+
+          const confirmation=await api({
             action:'confirm',
             articleNumero:row.articleNumero,
             targetName:row.targetName
           });
 
+          if(!confirmation?.ok){
+            throw new Error(
+              'La photo a été envoyée mais la confirmation en base a échoué.'
+            );
+          }
+
           row.action='existing';
-          row.detail='Importée avec succès ; fichier Q: conservé.';
+          row.detail='IMPORT OK — photo enregistrée dans Storage et liée à l’article.';
           ok++;
         }
       }
@@ -807,11 +850,18 @@ importBtn.addEventListener('click',async()=>{
   filesBtn.disabled=false;
 
   if(errors){
-    showError('Certaines photos n’ont pas pu être importées',
-      'Consultez la colonne Détail du tableau pour identifier les erreurs.');
+    showError(
+      'Certaines photos n’ont pas pu être importées',
+      'Consultez la colonne Détail du tableau. Le résultat de cet import reste affiché afin de ne pas masquer les erreurs.'
+    );
+  }else{
+    userInfo.textContent=
+      'Import terminé avec succès. Les photos importées sont maintenant enregistrées dans Supabase.';
   }
 
-  await analyzeSelectedFiles();
+  renderRows();
+  renderStats();
+  importBtn.disabled=true;
 });
 </script>
 </body>
