@@ -360,13 +360,22 @@ td{
 
 <main>
   <section class="card warning">
-    <strong>Accès aux dossiers locaux requis</strong>
+    <strong>Accès au lecteur Q: requis</strong>
     DS Label utilise trois dossiers locaux :
-    <span class="path">C:\Users\p.bertho\Documents\generateur_etiquettes\Photos To Import</span>,
-    <span class="path">C:\Users\p.bertho\Documents\generateur_etiquettes\Photos Imported</span>
+    <span class="path">Q:\Commun\Generateur Etiquette\Photos To Import</span>,
+    <span class="path">Q:\Commun\Generateur Etiquette\Photos Imported</span>
     et
-    <span class="path">C:\Users\p.bertho\Documents\Photos Archives Label DS</span>.
-    Le navigateur doit recevoir votre autorisation pour accéder à ces dossiers.
+    <span class="path">Q:\Commun\Generateur Etiquette\Photos Archives Label DS</span>.
+    Le VPN doit être actif et le lecteur Q: accessible. Le navigateur vous demandera l’autorisation d’accéder aux trois dossiers.
+  </section>
+
+  <section class="card warning" style="background:#fff4f4;border-color:#e5a3a3;color:#7d2020">
+    <strong>Attention au lecteur sélectionné</strong>
+    Pour des raisons de sécurité, Edge/Chrome ne transmettent pas à DS Label la lettre du lecteur.
+    L'application peut vérifier le nom du dossier sélectionné, mais pas confirmer automatiquement qu'il se trouve réellement sur <b>Q:</b>.
+    Vérifiez donc que la barre d'adresse de l'Explorateur commence bien par
+    <span class="path">Q:\Commun\Generateur Etiquette\</span>
+    avant de valider chaque dossier.
   </section>
 
   <section class="card import-main-card">
@@ -383,10 +392,10 @@ td{
           </div>
 
           <div style="margin-top:12px">
-            <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossiers utilisés :</div>
-            <div class="path" style="margin-bottom:6px">À importer : C:\Users\p.bertho\Documents\generateur_etiquettes\Photos To Import</div>
-            <div class="path" style="margin-bottom:6px">Importées : C:\Users\p.bertho\Documents\generateur_etiquettes\Photos Imported</div>
-            <div class="path">Archives : C:\Users\p.bertho\Documents\Photos Archives Label DS</div>
+            <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossiers Q: utilisés :</div>
+            <div class="path" style="margin-bottom:6px">À importer : Q:\Commun\Generateur Etiquette\Photos To Import</div>
+            <div class="path" style="margin-bottom:6px">Importées : Q:\Commun\Generateur Etiquette\Photos Imported</div>
+            <div class="path">Archives : Q:\Commun\Generateur Etiquette\Photos Archives Label DS</div>
             <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:800">
               Aucun dossier sélectionné.
             </div>
@@ -492,9 +501,9 @@ let importSortKey='sourceName';
 let importSortDir='asc';
 let supabaseClient=null;
 
-const PATH_TO_IMPORT='C:\\Users\\p.bertho\\Documents\\generateur_etiquettes\\Photos To Import';
-const PATH_IMPORTED='C:\\Users\\p.bertho\\Documents\\generateur_etiquettes\\Photos Imported';
-const PATH_ARCHIVE='C:\\Users\\p.bertho\\Documents\\Photos Archives Label DS';
+const PATH_TO_IMPORT='Q:\\Commun\\Generateur Etiquette\\Photos To Import';
+const PATH_IMPORTED='Q:\\Commun\\Generateur Etiquette\\Photos Imported';
+const PATH_ARCHIVE='Q:\\Commun\\Generateur Etiquette\\Photos Archives Label DS';
 
 let sourceDirHandle=null;
 let importedDirHandle=null;
@@ -710,12 +719,28 @@ async function analyzeSelectedFiles(){
 }
 
 
-async function verifierNomDossier(handle,nomAttendu){
+async function verifierNomDossier(handle,nomAttendu,cheminAttendu){
   if(!handle) throw new Error('Dossier non sélectionné.');
+
   if(String(handle.name||'').toLowerCase()!==String(nomAttendu).toLowerCase()){
     throw new Error(
       `Le dossier sélectionné est "${handle.name}". `+
       `Le dossier attendu est "${nomAttendu}".`
+    );
+  }
+
+  const confirmation=window.confirm(
+    'Vérification du lecteur Q:\\n\\n'+
+    'Le dossier sélectionné est : '+handle.name+'\\n\\n'+
+    'Il doit impérativement se trouver ici :\\n'+
+    cheminAttendu+'\\n\\n'+
+    'Le navigateur ne peut pas lire la lettre du lecteur.\\n'+
+    'Confirmez-vous que vous êtes bien sur le lecteur Q: ?'
+  );
+
+  if(!confirmation){
+    throw new Error(
+      'Sélection annulée : choisissez le dossier sur le lecteur Q:.'
     );
   }
 }
@@ -778,17 +803,17 @@ async function selectionnerDossiersPhotos(){
     );
   }
 
-  userInfo.textContent='Sélectionnez le dossier Photos To Import…';
+  userInfo.textContent='Sur le lecteur Q:, sélectionnez Photos To Import…';
   sourceDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
-  await verifierNomDossier(sourceDirHandle,'Photos To Import');
+  await verifierNomDossier(sourceDirHandle,'Photos To Import',PATH_TO_IMPORT);
 
-  userInfo.textContent='Sélectionnez maintenant le dossier Photos Imported…';
+  userInfo.textContent='Toujours sur Q:, sélectionnez maintenant Photos Imported…';
   importedDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
-  await verifierNomDossier(importedDirHandle,'Photos Imported');
+  await verifierNomDossier(importedDirHandle,'Photos Imported',PATH_IMPORTED);
 
-  userInfo.textContent='Sélectionnez enfin le dossier Photos Archives Label DS…';
+  userInfo.textContent='Toujours sur Q:, sélectionnez enfin Photos Archives Label DS…';
   archiveDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
-  await verifierNomDossier(archiveDirHandle,'Photos Archives Label DS');
+  await verifierNomDossier(archiveDirHandle,'Photos Archives Label DS',PATH_ARCHIVE);
 
   selectedFiles=await chargerPngDepuisDossier(sourceDirHandle);
   fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
@@ -798,7 +823,7 @@ async function selectionnerDossiersPhotos(){
     ' fichier(s) PNG trouvé(s) dans Photos To Import.';
 
   userInfo.textContent=
-    'Les trois dossiers sont autorisés. Après chaque import Supabase réussi, '+
+    'Les trois dossiers Q: sont autorisés. Après chaque import Supabase réussi, '+
     'la photo sera copiée dans Photos Imported et Photos Archives Label DS, '+
     'puis supprimée de Photos To Import.';
 
