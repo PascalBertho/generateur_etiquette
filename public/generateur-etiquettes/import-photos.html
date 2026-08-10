@@ -385,11 +385,18 @@ td{
       <div class="import-steps">
         <div class="import-step">
           <strong>1. Charger les PNG du dossier Q:</strong>
-          <div class="actions">
-            <button class="btn btn-primary" id="filesBtn" type="button">Sélectionner les dossiers photos</button>
-            <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
+          <div class="actions" style="align-items:stretch">
+            <button class="btn btn-primary" id="selectSourceDirBtn" type="button">1. Autoriser Photos To Import</button>
+            <button class="btn btn-secondary" id="selectImportedDirBtn" type="button">2. Autoriser Photos Imported</button>
+            <button class="btn btn-secondary" id="selectArchiveDirBtn" type="button">3. Autoriser Photos Archives Label DS</button>
             <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
           </div>
+          <div id="folderPermissions" style="margin-top:12px;display:grid;gap:6px;font-size:12px">
+            <div id="permSource">❌ Photos To Import : non autorisé</div>
+            <div id="permImported">❌ Photos Imported : non autorisé</div>
+            <div id="permArchive">❌ Photos Archives Label DS : non autorisé</div>
+          </div>
+          <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
 
           <div style="margin-top:12px">
             <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossiers Q: utilisés :</div>
@@ -400,7 +407,7 @@ td{
               Aucun dossier sélectionné.
             </div>
             <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
-              Cliquez sur « Sélectionner les dossiers photos ». Le navigateur vous demandera successivement
+              Autorisez les trois dossiers un par un avec les boutons ci-dessus.
               les dossiers <b>Photos To Import</b>, <b>Photos Imported</b> et <b>Photos Archives Label DS</b>.
             </div>
           </div>
@@ -510,7 +517,9 @@ let importedDirHandle=null;
 let archiveDirHandle=null;
 let sourceFileHandles=new Map();
 
-const filesBtn=document.getElementById('filesBtn');
+const selectSourceDirBtn=document.getElementById('selectSourceDirBtn');
+const selectImportedDirBtn=document.getElementById('selectImportedDirBtn');
+const selectArchiveDirBtn=document.getElementById('selectArchiveDirBtn');
 const filesInput=document.getElementById('filesInput');
 const importBtn=document.getElementById('importBtn');
 const selectedInfo=document.getElementById('selectedInfo');
@@ -796,6 +805,82 @@ async function classerPhotoApresImport(sourceName){
 }
 
 
+
+async function demanderPermissionLectureEcriture(handle,nomDossier){
+  if(!handle) throw new Error(`Aucun dossier sélectionné pour ${nomDossier}.`);
+
+  let permission='prompt';
+
+  try{
+    permission=await handle.queryPermission({mode:'readwrite'});
+  }catch(e){}
+
+  if(permission!=='granted'){
+    try{
+      permission=await handle.requestPermission({mode:'readwrite'});
+    }catch(e){
+      throw new Error(`Autorisation lecture/écriture refusée pour "${nomDossier}".`);
+    }
+  }
+
+  if(permission!=='granted'){
+    throw new Error(`Autorisation lecture/écriture refusée pour "${nomDossier}".`);
+  }
+}
+
+function majEtatPermissionsDossiers(){
+  document.getElementById('permSource').textContent=
+    sourceDirHandle?'✅ Photos To Import : autorisé':'❌ Photos To Import : non autorisé';
+  document.getElementById('permImported').textContent=
+    importedDirHandle?'✅ Photos Imported : autorisé':'❌ Photos Imported : non autorisé';
+  document.getElementById('permArchive').textContent=
+    archiveDirHandle?'✅ Photos Archives Label DS : autorisé':'❌ Photos Archives Label DS : non autorisé';
+
+  importBtn.disabled=!(
+    sourceDirHandle &&
+    importedDirHandle &&
+    archiveDirHandle &&
+    selectedFiles.length>0
+  );
+}
+
+async function choisirSource(){
+  const handle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(handle,'Photos To Import',PATH_TO_IMPORT);
+  await demanderPermissionLectureEcriture(handle,'Photos To Import');
+
+  sourceDirHandle=handle;
+  selectedFiles=await chargerPngDepuisDossier(sourceDirHandle);
+  fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
+
+  selectedInfo.textContent=selectedFiles.length+' fichier(s) PNG trouvé(s) dans Photos To Import.';
+  majEtatPermissionsDossiers();
+
+  if(selectedFiles.length){
+    await analyzeSelectedFiles();
+  }
+}
+
+async function choisirImported(){
+  const handle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(handle,'Photos Imported',PATH_IMPORTED);
+  await demanderPermissionLectureEcriture(handle,'Photos Imported');
+  await testerEcritureDossier(handle,'Photos Imported');
+
+  importedDirHandle=handle;
+  majEtatPermissionsDossiers();
+}
+
+async function choisirArchive(){
+  const handle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(handle,'Photos Archives Label DS',PATH_ARCHIVE);
+  await demanderPermissionLectureEcriture(handle,'Photos Archives Label DS');
+  await testerEcritureDossier(handle,'Photos Archives Label DS');
+
+  archiveDirHandle=handle;
+  majEtatPermissionsDossiers();
+}
+
 async function testerEcritureDossier(handle,nomDossier){
   const testName='.ds_label_write_test_'+Date.now()+'.tmp';
 
@@ -862,6 +947,39 @@ filesBtn.addEventListener('click',()=>{
     'faites <b>Ctrl+A</b> puis cliquez sur <b>Ouvrir</b>.';
   filesInput.click();
 });
+
+
+selectSourceDirBtn?.addEventListener('click',async()=>{
+  clearError();
+  try{
+    userInfo.textContent='Sélectionnez Q:\\Commun\\Generateur Etiquette\\Photos To Import';
+    await choisirSource();
+  }catch(e){
+    showError('Photos To Import non autorisé',e.message||String(e));
+  }
+});
+
+selectImportedDirBtn?.addEventListener('click',async()=>{
+  clearError();
+  try{
+    userInfo.textContent='Sélectionnez Q:\\Commun\\Generateur Etiquette\\Photos Imported';
+    await choisirImported();
+  }catch(e){
+    showError('Photos Imported non autorisé',e.message||String(e));
+  }
+});
+
+selectArchiveDirBtn?.addEventListener('click',async()=>{
+  clearError();
+  try{
+    userInfo.textContent='Sélectionnez Q:\\Commun\\Photos Archives Label DS';
+    await choisirArchive();
+  }catch(e){
+    showError('Photos Archives Label DS non autorisé',e.message||String(e));
+  }
+});
+
+majEtatPermissionsDossiers();
 
 filesInput.addEventListener('change',async()=>{
   clearError();
@@ -938,7 +1056,7 @@ importBtn.addEventListener('click',async()=>{
   if(!groupes.length) return;
 
   importBtn.disabled=true;
-  filesBtn.disabled=true;
+  selectSourceDirBtn.disabled=true;selectImportedDirBtn.disabled=true;selectArchiveDirBtn.disabled=true;
   progressBar.hidden=false;
   progressBar.max=groupes.length;
   progressBar.value=0;
@@ -1075,7 +1193,7 @@ importBtn.addEventListener('click',async()=>{
     `${errors} erreur(s) Supabase, `+
     `${classementErrors} erreur(s) de classement local.`;
 
-  filesBtn.disabled=false;
+  selectSourceDirBtn.disabled=false;selectImportedDirBtn.disabled=false;selectArchiveDirBtn.disabled=false;
 
   if(errors || classementErrors){
     showError(
