@@ -365,7 +365,7 @@ td{
     <span class="path">Q:\Commun\Generateur Etiquette\Photos To Import</span>,
     <span class="path">Q:\Commun\Generateur Etiquette\Photos Imported</span>
     et
-    <span class="path">Q:\Commun\Generateur Etiquette\Photos Archives Label DS</span>.
+    <span class="path">Q:\Commun\Photos Archives Label DS</span>.
     Le VPN doit être actif et le lecteur Q: accessible. Le navigateur vous demandera l’autorisation d’accéder aux trois dossiers.
   </section>
 
@@ -395,7 +395,7 @@ td{
             <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossiers Q: utilisés :</div>
             <div class="path" style="margin-bottom:6px">À importer : Q:\Commun\Generateur Etiquette\Photos To Import</div>
             <div class="path" style="margin-bottom:6px">Importées : Q:\Commun\Generateur Etiquette\Photos Imported</div>
-            <div class="path">Archives : Q:\Commun\Generateur Etiquette\Photos Archives Label DS</div>
+            <div class="path">Archives : Q:\Commun\Photos Archives Label DS</div>
             <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:800">
               Aucun dossier sélectionné.
             </div>
@@ -503,7 +503,7 @@ let supabaseClient=null;
 
 const PATH_TO_IMPORT='Q:\\Commun\\Generateur Etiquette\\Photos To Import';
 const PATH_IMPORTED='Q:\\Commun\\Generateur Etiquette\\Photos Imported';
-const PATH_ARCHIVE='Q:\\Commun\\Generateur Etiquette\\Photos Archives Label DS';
+const PATH_ARCHIVE='Q:\\Commun\\Photos Archives Label DS';
 
 let sourceDirHandle=null;
 let importedDirHandle=null;
@@ -795,6 +795,25 @@ async function classerPhotoApresImport(sourceName){
   return {ok:true};
 }
 
+
+async function testerEcritureDossier(handle,nomDossier){
+  const testName='.ds_label_write_test_'+Date.now()+'.tmp';
+
+  try{
+    const testHandle=await handle.getFileHandle(testName,{create:true});
+    const writable=await testHandle.createWritable();
+    await writable.write('DS Label write test');
+    await writable.close();
+    await handle.removeEntry(testName);
+  }catch(e){
+    throw new Error(
+      `Le dossier "${nomDossier}" n'est pas accessible en écriture. `+
+      `Vérifiez vos droits réseau/VPN. Détail : `+
+      (e.message||String(e))
+    );
+  }
+}
+
 async function selectionnerDossiersPhotos(){
   if(!window.showDirectoryPicker){
     throw new Error(
@@ -814,6 +833,10 @@ async function selectionnerDossiersPhotos(){
   userInfo.textContent='Toujours sur Q:, sélectionnez enfin Photos Archives Label DS…';
   archiveDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
   await verifierNomDossier(archiveDirHandle,'Photos Archives Label DS',PATH_ARCHIVE);
+
+  userInfo.textContent='Vérification des droits d’écriture sur les dossiers de destination…';
+  await testerEcritureDossier(importedDirHandle,'Photos Imported');
+  await testerEcritureDossier(archiveDirHandle,'Photos Archives Label DS');
 
   selectedFiles=await chargerPngDepuisDossier(sourceDirHandle);
   fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
@@ -923,6 +946,7 @@ importBtn.addEventListener('click',async()=>{
   let photosOk=0;
   let articlesOk=0;
   let errors=0;
+  let classementErrors=0;
   let termines=0;
 
   // Traite UNE photo unique : éventuellement upload une fois,
@@ -988,10 +1012,11 @@ importBtn.addEventListener('click',async()=>{
       try{
         classement=await classerPhotoApresImport(groupe.sourceName);
       }catch(classementError){
+        classementErrors++;
         classement={
           ok:false,
           detail:
-            'Import Supabase réussi, mais classement local impossible : '+
+            'IMPORT SUPABASE OK, MAIS CLASSEMENT LOCAL IMPOSSIBLE : '+
             (classementError.message||String(classementError))
         };
       }
@@ -1046,14 +1071,17 @@ importBtn.addEventListener('click',async()=>{
 
   progress.textContent=
     `Terminé — ${photosOk} photo(s) traitée(s), `+
-    `${articlesOk} article(s) lié(s), ${errors} erreur(s).`;
+    `${articlesOk} article(s) lié(s), `+
+    `${errors} erreur(s) Supabase, `+
+    `${classementErrors} erreur(s) de classement local.`;
 
   filesBtn.disabled=false;
 
-  if(errors){
+  if(errors || classementErrors){
     showError(
-      'Certaines photos n’ont pas pu être importées',
-      'Consultez la colonne Détail. Les résultats restent affichés.'
+      'Certaines opérations n’ont pas été terminées',
+      `Erreurs Supabase : ${errors}. Erreurs de classement local : ${classementErrors}. `+
+      'Consultez la colonne Détail.'
     );
   }else{
     userInfo.textContent=
