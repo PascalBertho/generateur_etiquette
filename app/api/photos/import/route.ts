@@ -28,23 +28,12 @@ function autorise(request: NextRequest): boolean {
 function config() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey =
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
   if (!url || !key) {
     throw new Error(
       "Configuration Supabase incomplète : SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis",
     );
   }
-
-  if (!anonKey) {
-    throw new Error(
-      "Configuration Supabase incomplète : SUPABASE_ANON_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY est requis pour l'import signé",
-    );
-  }
-
-  return { url, key, anonKey };
+  return { url, key };
 }
 
 function headersSupabase(extra: Record<string, string> = {}) {
@@ -72,10 +61,15 @@ function sansExtension(filename: string): string {
   return filename.replace(/\.[^.]+$/, "");
 }
 
-function nomCible(articleNumero: string): string {
-  const propre = articleNumero.trim().replace(/[\\/]/g, "_");
-  if (!propre) throw new Error("Référence article vide");
-  return `${propre}.png`;
+function nomCibleDepuisSource(sourceName: string): string {
+  const nom = texte(sourceName);
+  if (!/\.png$/i.test(nom)) {
+    throw new Error("Le fichier source doit être un PNG.");
+  }
+
+  // On conserve le nom réel de la photo dans Storage, y compris "--".
+  // Une photo préfixe n'est donc enregistrée qu'une seule fois.
+  return nom.replace(/[\\/]/g, "_");
 }
 
 async function lireTousArticles(): Promise<JsonRow[]> {
@@ -145,37 +139,100 @@ async function listerBucket(): Promise<Set<string>> {
   return resultat;
 }
 
-function construireIndexPhotos(files: PhotoInput[]) {
+type PhotoIndex = {
+  name: string;
+  normalized: string;
+  forceExact: boolean;
+};
+
+function construireIndexPhotos(files: PhotoInput[]): PhotoIndex[] {
   return files
     .map((file) => texte(file.name))
     .filter((name) => /\.png$/i.test(name))
-    .map((name) => ({
-      name,
-      normalized: normaliser(sansExtension(name)),
-    }))
+    .map((name) => {
+      const base = sansExtension(name);
+      const forceExact = base.endsWith("--");
+
+      // Les deux tirets sont un marqueur de correspondance exacte.
+      // Ils restent dans le nom de la photo, mais sont retirés pour comparer
+      // avec la référence article.
+      const referenceBase = forceExact ? base.slice(0, -2) : base;
+
+      return {
+        name,
+        normalized: normaliser(referenceBase),
+        forceExact,
+      };
+    })
     .filter((photo) => photo.normalized);
 }
 
-function chercherPhoto(articleNumero: string, photos: { name: string; normalized: string }[]) {
+function chercherPhoto(articleNumero: string, photos: PhotoIndex[]) {
   const articleNorm = normaliser(articleNumero);
   if (!articleNorm) return { type: "aucune" as const };
 
-  const exactes = photos.filter((photo) => photo.normalized === articleNorm);
-  if (exactes.length === 1) {
-    return { type: "exacte" as const, photo: exactes[0], detail: "" };
-  }
-  if (exactes.length > 1) {
+  // 1. Priorité absolue aux photos terminées par "--" :
+  //    elles ne peuvent correspondre qu'à l'article exact.
+  const exactesForcees = photos.filter(
+    (photo) => photo.forceExact && photo.normalized === articleNorm,
+  );
+
+  if (exactesForcees.length === 1) {
     return {
-      type: "ambigue" as const,
-      detail: `Plusieurs fichiers correspondent exactement : ${exactes.map((p) => p.name).join(" | ")}`,
+      type: "exacte-forcee" as const,
+      photo: exactesForcees[0],
+      detail: `Correspondance exacte forcée par "--" : ${exactesForcees[0].name}`,
     };
   }
 
-  const prefixes = photos.filter((photo) => articleNorm.startsWith(photo.normalized));
+  if (exactesForcees.length > 1) {
+    return {
+      type: "ambigue" as const,
+      detail: `Plusieurs photos exactes forcées correspondent : ${exactesForcees
+        .map((p) => p.name)
+        .join(" | ")}`,
+    };
+  }
+
+  // 2. Une photo normale peut être une référence exacte.
+  const exactesNormales = photos.filter(
+    (photo) => !photo.forceExact && photo.normalized === articleNorm,
+  );
+
+  if (exactesNormales.length === 1) {
+    return {
+      type: "exacte" as const,
+      photo: exactesNormales[0],
+      detail: "Correspondance exacte.",
+    };
+  }
+
+  if (exactesNormales.length > 1) {
+    return {
+      type: "ambigue" as const,
+      detail: `Plusieurs photos correspondent exactement : ${exactesNormales
+        .map((p) => p.name)
+        .join(" | ")}`,
+    };
+  }
+
+  // 3. Seules les photos SANS "--" peuvent servir de préfixe.
+  const prefixes = photos.filter(
+    (photo) =>
+      !photo.forceExact &&
+      articleNorm.startsWith(photo.normalized),
+  );
+
   if (!prefixes.length) return { type: "aucune" as const };
 
-  const longueurMax = Math.max(...prefixes.map((photo) => photo.normalized.length));
-  const meilleurs = prefixes.filter((photo) => photo.normalized.length === longueurMax);
+  // Le préfixe le plus long gagne.
+  const longueurMax = Math.max(
+    ...prefixes.map((photo) => photo.normalized.length),
+  );
+
+  const meilleurs = prefixes.filter(
+    (photo) => photo.normalized.length === longueurMax,
+  );
 
   if (meilleurs.length === 1) {
     return {
@@ -187,7 +244,9 @@ function chercherPhoto(articleNumero: string, photos: { name: string; normalized
 
   return {
     type: "ambigue" as const,
-    detail: `Plusieurs meilleurs préfixes : ${meilleurs.map((p) => p.name).join(" | ")}`,
+    detail: `Plusieurs meilleurs préfixes : ${meilleurs
+      .map((p) => p.name)
+      .join(" | ")}`,
   };
 }
 
@@ -221,7 +280,7 @@ async function analyser(files: PhotoInput[]): Promise<AnalysisRow[]> {
     }
 
     const sourceName = match.photo.name;
-    const targetName = nomCible(articleNumero);
+    const targetName = nomCibleDepuisSource(sourceName);
     const existe = fichiersBucket.has(targetName.toLowerCase());
     const photoDb = texte(article[PHOTO_COL]);
     sourcesUtilisees.add(sourceName.toLowerCase());
@@ -238,7 +297,7 @@ async function analyser(files: PhotoInput[]): Promise<AnalysisRow[]> {
           match.detail,
           dbOk
             ? "Déjà présente dans le bucket ; aucun écrasement."
-            : "Déjà présente dans le bucket ; seule la colonne articles_photo sera renseignée.",
+            : "Photo déjà présente dans le bucket ; cet article sera simplement lié au même fichier.",
         ]
           .filter(Boolean)
           .join(" — "),
@@ -250,7 +309,7 @@ async function analyser(files: PhotoInput[]): Promise<AnalysisRow[]> {
         targetName,
         matchType: match.type,
         action: "upload",
-        detail: [match.detail, "Nouvelle photo à importer."].filter(Boolean).join(" — "),
+        detail: [match.detail, "Nouvelle photo à importer une seule fois ; les autres articles correspondants pointeront vers ce même fichier."].filter(Boolean).join(" — "),
       });
     }
   }
@@ -387,31 +446,27 @@ export async function POST(request: NextRequest) {
       if (!articleNumero || !sourceName || !targetName) {
         return NextResponse.json({ error: "Paramètres prepare incomplets." }, { status: 400 });
       }
-      if (!/\.png$/i.test(sourceName) || targetName !== nomCible(articleNumero)) {
-        return NextResponse.json({ error: "Nom de fichier non valide." }, { status: 400 });
+      if (
+        !/\.png$/i.test(sourceName) ||
+        targetName !== nomCibleDepuisSource(sourceName)
+      ) {
+        return NextResponse.json(
+          { error: "Nom de fichier non valide." },
+          { status: 400 },
+        );
       }
 
       // Double contrôle juste avant l'upload : ne jamais remplacer un fichier existant.
       if (await objetExiste(targetName)) {
-        const { url, anonKey } = config();
-        return NextResponse.json({
-          alreadyExists: true,
-          path: targetName,
-          supabaseUrl: url,
-          supabaseAnonKey: anonKey,
-        });
+        return NextResponse.json({ alreadyExists: true, path: targetName });
       }
 
       const signed = await creerUploadSigne(targetName);
-      const { url, anonKey } = config();
-
       return NextResponse.json({
         alreadyExists: false,
         path: targetName,
         signedUrl: signed.signedUrl,
         token: signed.token,
-        supabaseUrl: url,
-        supabaseAnonKey: anonKey,
       });
     }
 
@@ -419,8 +474,11 @@ export async function POST(request: NextRequest) {
       const articleNumero = texte(body.articleNumero).replace(/\.0$/, "");
       const targetName = texte(body.targetName);
 
-      if (!articleNumero || targetName !== nomCible(articleNumero)) {
-        return NextResponse.json({ error: "Paramètres confirm invalides." }, { status: 400 });
+      if (!articleNumero || !targetName || !/\.png$/i.test(targetName)) {
+        return NextResponse.json(
+          { error: "Paramètres confirm invalides." },
+          { status: 400 },
+        );
       }
 
       if (!(await objetExiste(targetName))) {
