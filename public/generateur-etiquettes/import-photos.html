@@ -938,17 +938,6 @@ async function selectionnerDossiersPhotos(){
   await analyzeSelectedFiles();
 }
 
-filesBtn.addEventListener('click',()=>{
-  clearError();
-  filesInput.value='';
-  progress.textContent='Sélection des fichiers en attente…';
-  userInfo.innerHTML=
-    'Dans Windows, ouvrez <b>Q:\\Commun\\Generateur Etiquette\\Photos produits</b>, '+
-    'faites <b>Ctrl+A</b> puis cliquez sur <b>Ouvrir</b>.';
-  filesInput.click();
-});
-
-
 selectSourceDirBtn?.addEventListener('click',async()=>{
   clearError();
   try{
