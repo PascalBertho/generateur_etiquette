@@ -360,10 +360,13 @@ td{
 
 <main>
   <section class="card warning">
-    <strong>Accès réseau / VPN requis</strong>
-    Les photos produits se trouvent dans
-    <span class="path">Q:\Commun\Generateur Etiquette\Photos produits</span>.
-    Vérifiez que le VPN est actif et que le lecteur <b>Q:</b> est accessible.
+    <strong>Accès aux dossiers locaux requis</strong>
+    DS Label utilise trois dossiers locaux :
+    <span class="path">C:\Users\p.bertho\Documents\generateur_etiquettes\Photos To Import</span>,
+    <span class="path">C:\Users\p.bertho\Documents\generateur_etiquettes\Photos Imported</span>
+    et
+    <span class="path">C:\Users\p.bertho\Documents\Photos Archives Label DS</span>.
+    Le navigateur doit recevoir votre autorisation pour accéder à ces dossiers.
   </section>
 
   <section class="card import-main-card">
@@ -374,20 +377,22 @@ td{
         <div class="import-step">
           <strong>1. Charger les PNG du dossier Q:</strong>
           <div class="actions">
-            <button class="btn btn-primary" id="filesBtn" type="button">Choisir le dossier Q:</button>
+            <button class="btn btn-primary" id="filesBtn" type="button">Sélectionner les dossiers photos</button>
             <input id="filesInput" type="file" accept=".png,image/png" multiple hidden>
             <button id="importBtn" class="btn btn-import" disabled>Lancer l'import</button>
           </div>
 
           <div style="margin-top:12px">
-            <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossier sélectionné :</div>
-            <div class="path">Q:\Commun\Generateur Etiquette\Photos produits</div>
+            <div style="font-size:12px;color:#617382;margin-bottom:4px">Dossiers utilisés :</div>
+            <div class="path" style="margin-bottom:6px">À importer : C:\Users\p.bertho\Documents\generateur_etiquettes\Photos To Import</div>
+            <div class="path" style="margin-bottom:6px">Importées : C:\Users\p.bertho\Documents\generateur_etiquettes\Photos Imported</div>
+            <div class="path">Archives : C:\Users\p.bertho\Documents\Photos Archives Label DS</div>
             <div id="selectedInfo" style="margin-top:9px;font-size:13px;font-weight:800">
-              Aucun fichier chargé.
+              Aucun dossier sélectionné.
             </div>
             <div id="userInfo" style="margin-top:6px;font-size:12px;color:#617382;line-height:1.45">
-              Cliquez sur « Choisir le dossier Q: », ouvrez le dossier ci-dessus,
-              faites <b>Ctrl+A</b>, puis cliquez sur <b>Ouvrir</b>.
+              Cliquez sur « Sélectionner les dossiers photos ». Le navigateur vous demandera successivement
+              les dossiers <b>Photos To Import</b>, <b>Photos Imported</b> et <b>Photos Archives Label DS</b>.
             </div>
           </div>
         </div>
@@ -409,7 +414,7 @@ td{
             </div>
             <div class="import-info-item">
               <span class="import-info-icon">✓</span>
-              <span>Les fichiers présents sur le lecteur Q: ne sont jamais modifiés ni supprimés.</span>
+              <span>Après un import réussi, la photo est copiée dans <b>Photos Imported</b> et <b>Photos Archives Label DS</b>, puis supprimée de <b>Photos To Import</b>.</span>
             </div>
           </div>
         </div>
@@ -486,6 +491,15 @@ let analysisRows=[];
 let importSortKey='sourceName';
 let importSortDir='asc';
 let supabaseClient=null;
+
+const PATH_TO_IMPORT='C:\\Users\\p.bertho\\Documents\\generateur_etiquettes\\Photos To Import';
+const PATH_IMPORTED='C:\\Users\\p.bertho\\Documents\\generateur_etiquettes\\Photos Imported';
+const PATH_ARCHIVE='C:\\Users\\p.bertho\\Documents\\Photos Archives Label DS';
+
+let sourceDirHandle=null;
+let importedDirHandle=null;
+let archiveDirHandle=null;
+let sourceFileHandles=new Map();
 
 const filesBtn=document.getElementById('filesBtn');
 const filesInput=document.getElementById('filesInput');
@@ -695,6 +709,102 @@ async function analyzeSelectedFiles(){
   }
 }
 
+
+async function verifierNomDossier(handle,nomAttendu){
+  if(!handle) throw new Error('Dossier non sélectionné.');
+  if(String(handle.name||'').toLowerCase()!==String(nomAttendu).toLowerCase()){
+    throw new Error(
+      `Le dossier sélectionné est "${handle.name}". `+
+      `Le dossier attendu est "${nomAttendu}".`
+    );
+  }
+}
+
+async function chargerPngDepuisDossier(handle){
+  const files=[];
+  sourceFileHandles=new Map();
+
+  for await (const [name,entry] of handle.entries()){
+    if(entry.kind!=='file') continue;
+    if(!name.toLowerCase().endsWith('.png')) continue;
+
+    const file=await entry.getFile();
+    files.push(file);
+    sourceFileHandles.set(name.toLowerCase(),entry);
+  }
+
+  return files;
+}
+
+async function copierFichierVersDossier(file,destinationHandle){
+  const destHandle=await destinationHandle.getFileHandle(file.name,{create:true});
+  const writable=await destHandle.createWritable();
+  await writable.write(file);
+  await writable.close();
+}
+
+async function classerPhotoApresImport(sourceName){
+  if(!sourceDirHandle||!importedDirHandle||!archiveDirHandle){
+    return {
+      ok:false,
+      detail:'Classement local non effectué : accès aux trois dossiers non disponible.'
+    };
+  }
+
+  const sourceHandle=sourceFileHandles.get(String(sourceName).toLowerCase());
+  if(!sourceHandle){
+    return {
+      ok:false,
+      detail:'Classement local non effectué : fichier source introuvable.'
+    };
+  }
+
+  const file=await sourceHandle.getFile();
+
+  await copierFichierVersDossier(file,importedDirHandle);
+  await copierFichierVersDossier(file,archiveDirHandle);
+
+  await sourceDirHandle.removeEntry(file.name);
+  sourceFileHandles.delete(String(file.name).toLowerCase());
+
+  return {ok:true};
+}
+
+async function selectionnerDossiersPhotos(){
+  if(!window.showDirectoryPicker){
+    throw new Error(
+      'Ce navigateur ne permet pas le classement automatique des photos. '+
+      'Utilisez Microsoft Edge ou Google Chrome récent.'
+    );
+  }
+
+  userInfo.textContent='Sélectionnez le dossier Photos To Import…';
+  sourceDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(sourceDirHandle,'Photos To Import');
+
+  userInfo.textContent='Sélectionnez maintenant le dossier Photos Imported…';
+  importedDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(importedDirHandle,'Photos Imported');
+
+  userInfo.textContent='Sélectionnez enfin le dossier Photos Archives Label DS…';
+  archiveDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+  await verifierNomDossier(archiveDirHandle,'Photos Archives Label DS');
+
+  selectedFiles=await chargerPngDepuisDossier(sourceDirHandle);
+  fileByName=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));
+
+  selectedInfo.textContent=
+    selectedFiles.length+
+    ' fichier(s) PNG trouvé(s) dans Photos To Import.';
+
+  userInfo.textContent=
+    'Les trois dossiers sont autorisés. Après chaque import Supabase réussi, '+
+    'la photo sera copiée dans Photos Imported et Photos Archives Label DS, '+
+    'puis supprimée de Photos To Import.';
+
+  await analyzeSelectedFiles();
+}
+
 filesBtn.addEventListener('click',()=>{
   clearError();
   filesInput.value='';
@@ -751,112 +861,180 @@ async function ensureSupabaseClient(config){
 
 importBtn.addEventListener('click',async()=>{
   clearError();
+
+  // Regroupement par photo cible : une photo préfixe peut servir à plusieurs articles.
   const todo=analysisRows.filter(r=>r.action==='upload'||r.action==='link-only');
   if(!todo.length) return;
+
+  const groupesMap=new Map();
+
+  for(const row of todo){
+    const key=String(row.targetName||'').toLowerCase();
+    if(!key) continue;
+
+    if(!groupesMap.has(key)){
+      groupesMap.set(key,{
+        sourceName:row.sourceName,
+        targetName:row.targetName,
+        rows:[],
+        needsUpload:false
+      });
+    }
+
+    const groupe=groupesMap.get(key);
+    groupe.rows.push(row);
+    if(row.action==='upload') groupe.needsUpload=true;
+  }
+
+  const groupes=[...groupesMap.values()];
+  if(!groupes.length) return;
 
   importBtn.disabled=true;
   filesBtn.disabled=true;
   progressBar.hidden=false;
-  progressBar.max=todo.length;
+  progressBar.max=groupes.length;
   progressBar.value=0;
 
-  let ok=0, skipped=0, errors=0;
+  let photosOk=0;
+  let articlesOk=0;
+  let errors=0;
+  let termines=0;
 
-  for(let i=0;i<todo.length;i++){
-    const row=todo[i];
-    progress.textContent=`Traitement ${i+1}/${todo.length} — ${row.articleNumero||row.sourceName}`;
-
+  // Traite UNE photo unique : éventuellement upload une fois,
+  // puis lie tous les articles correspondants en une seule requête.
+  async function traiterGroupe(groupe){
     try{
-      if(row.action==='link-only'){
-        await api({
-          action:'confirm',
-          articleNumero:row.articleNumero,
-          targetName:row.targetName
-        });
-        row.action='existing';
-        row.detail='Photo déjà dans le bucket ; colonne articles_photo mise à jour.';
-        ok++;
-      }else{
-        const prep=await api({
-          action:'prepare',
-          articleNumero:row.articleNumero,
-          sourceName:row.sourceName,
-          targetName:row.targetName
-        });
+      const file=fileByName.get(String(groupe.sourceName).toLowerCase());
 
-        if(prep.alreadyExists){
-          await api({
-            action:'confirm',
-            articleNumero:row.articleNumero,
-            targetName:row.targetName
-          });
-          row.action='existing';
-          row.detail='Photo déjà présente ; non remplacée.';
-          skipped++;
-        }else{
-          const file=fileByName.get(String(row.sourceName).toLowerCase());
-          if(!file) throw new Error('Fichier source introuvable dans la sélection.');
+      const prep=await api({
+        action:'prepare-photo',
+        sourceName:groupe.sourceName,
+        targetName:groupe.targetName
+      });
 
-          const client=await ensureSupabaseClient(prep);
+      if(!prep.alreadyExists){
+        if(!file){
+          throw new Error(
+            'Fichier source introuvable dans la sélection : '+groupe.sourceName
+          );
+        }
 
-          const {data:uploadData,error:uploadError}=await client.storage
-            .from(BUCKET)
-            .uploadToSignedUrl(prep.path,prep.token,file,{
-              contentType:'image/png',
-              cacheControl:'3600'
-            });
+        const client=await ensureSupabaseClient(prep);
 
-          if(uploadError){
-            throw new Error(
-              'Upload Storage refusé : ' +
-              (uploadError.message||String(uploadError))
-            );
-          }
-
-          if(!uploadData){
-            throw new Error(
-              'Supabase n\'a retourné aucune confirmation après l\'upload.'
-            );
-          }
-
-          const confirmation=await api({
-            action:'confirm',
-            articleNumero:row.articleNumero,
-            targetName:row.targetName
+        const {data:uploadData,error:uploadError}=await client.storage
+          .from(BUCKET)
+          .uploadToSignedUrl(prep.path,prep.token,file,{
+            contentType:'image/png',
+            cacheControl:'3600'
           });
 
-          if(!confirmation?.ok){
-            throw new Error(
-              'La photo a été envoyée mais la confirmation en base a échoué.'
-            );
-          }
+        if(uploadError){
+          throw new Error(
+            'Upload Storage refusé : '+
+            (uploadError.message||String(uploadError))
+          );
+        }
 
-          row.action='existing';
-          row.detail='IMPORT OK — photo enregistrée dans Storage et liée à l’article.';
-          ok++;
+        if(!uploadData){
+          throw new Error(
+            'Supabase n’a retourné aucune confirmation après l’upload.'
+          );
         }
       }
-    }catch(e){
-      row.action='error';
-      row.detail='ERREUR : '+(e.message||String(e));
-      errors++;
-    }
 
-    progressBar.value=i+1;
-    renderRows();
+      const articleNumeros=[...new Set(
+        groupe.rows
+          .map(r=>String(r.articleNumero||'').trim())
+          .filter(Boolean)
+      )];
+
+      const confirmation=await api({
+        action:'confirm-batch',
+        targetName:groupe.targetName,
+        articleNumeros
+      });
+
+      if(!confirmation?.ok){
+        throw new Error('La liaison groupée des articles a échoué.');
+      }
+
+      let classement={ok:false,detail:''};
+
+      try{
+        classement=await classerPhotoApresImport(groupe.sourceName);
+      }catch(classementError){
+        classement={
+          ok:false,
+          detail:
+            'Import Supabase réussi, mais classement local impossible : '+
+            (classementError.message||String(classementError))
+        };
+      }
+
+      for(const row of groupe.rows){
+        row.action='existing';
+        row.detail=
+          `IMPORT OK — ${groupe.targetName} — `+
+          `${articleNumeros.length} article(s) lié(s). `+
+          (classement.ok
+            ? 'Photo déplacée vers Photos Imported et sauvegardée dans Photos Archives Label DS.'
+            : classement.detail);
+      }
+
+      photosOk++;
+      articlesOk+=articleNumeros.length;
+    }catch(e){
+      errors++;
+
+      for(const row of groupe.rows){
+        row.action='error';
+        row.detail='ERREUR : '+(e.message||String(e));
+      }
+    }finally{
+      termines++;
+      progressBar.value=termines;
+      progress.textContent=
+        `Import ${termines}/${groupes.length} photo(s) unique(s) — `+
+        `${articlesOk} article(s) lié(s)`;
+      renderRows();
+    }
   }
 
-  progress.textContent=`Terminé — ${ok} traité(s), ${skipped} déjà présent(s), ${errors} erreur(s).`;
+  // 4 photos maximum en parallèle : gain important sans saturer Supabase/réseau.
+  const CONCURRENCY=4;
+  let prochain=0;
+
+  async function worker(){
+    while(true){
+      const index=prochain++;
+      if(index>=groupes.length) return;
+      await traiterGroupe(groupes[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {length:Math.min(CONCURRENCY,groupes.length)},
+      ()=>worker()
+    )
+  );
+
+  progress.textContent=
+    `Terminé — ${photosOk} photo(s) traitée(s), `+
+    `${articlesOk} article(s) lié(s), ${errors} erreur(s).`;
+
   filesBtn.disabled=false;
 
   if(errors){
     showError(
       'Certaines photos n’ont pas pu être importées',
-      'Consultez la colonne Détail du tableau. Le résultat de cet import reste affiché afin de ne pas masquer les erreurs.'
+      'Consultez la colonne Détail. Les résultats restent affichés.'
     );
   }else{
     userInfo.textContent=
-      'Import terminé avec succès. Les photos importées sont maintenant enregistrées dans Supabase.';
+      `Import terminé : ${photosOk} photo(s) unique(s) et `+
+      `${articlesOk} liaison(s) article/photo effectuée(s). `+
+      `Les photos traitées ont été classées dans Photos Imported et sauvegardées dans Photos Archives Label DS.`;
   }
 
   renderRows();

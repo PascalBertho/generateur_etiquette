@@ -401,6 +401,47 @@ async function creerUploadSigne(filename: string) {
   return { signedUrl, token };
 }
 
+
+async function mettreAJourPhotosArticles(articleNumeros: string[], filename: string) {
+  const { url } = config();
+  const uniques = [...new Set(
+    articleNumeros
+      .map((v) => texte(v).replace(/\.0$/, ""))
+      .filter(Boolean),
+  )];
+
+  if (!uniques.length) return;
+
+  // PostgREST accepte in.(a,b,c). On découpe pour éviter des URLs trop longues.
+  const tailleLot = 200;
+
+  for (let i = 0; i < uniques.length; i += tailleLot) {
+    const lot = uniques.slice(i, i + tailleLot);
+    const endpoint = new URL(`/rest/v1/${encodeURIComponent(TABLE)}`, url);
+
+    // Les références sont protégées par guillemets PostgREST.
+    const valeurs = lot
+      .map((v) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+      .join(",");
+
+    endpoint.searchParams.set(ARTICLE_COL, `in.(${valeurs})`);
+
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: headersSupabase({ Prefer: "return=minimal" }),
+      body: JSON.stringify({ [PHOTO_COL]: filename }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(
+        `Mise à jour groupée ${TABLE}.${PHOTO_COL} impossible : ${details}`,
+      );
+    }
+  }
+}
+
 async function mettreAJourPhotoArticle(articleNumero: string, filename: string) {
   const { url } = config();
   const endpoint = new URL(`/rest/v1/${encodeURIComponent(TABLE)}`, url);
@@ -467,6 +508,79 @@ export async function POST(request: NextRequest) {
         path: targetName,
         signedUrl: signed.signedUrl,
         token: signed.token,
+      });
+    }
+
+    if (action === "prepare-photo") {
+      const sourceName = texte(body.sourceName);
+      const targetName = texte(body.targetName);
+
+      if (
+        !sourceName ||
+        !targetName ||
+        !/\.png$/i.test(sourceName) ||
+        targetName !== nomCibleDepuisSource(sourceName)
+      ) {
+        return NextResponse.json(
+          { error: "Paramètres prepare-photo invalides." },
+          { status: 400 },
+        );
+      }
+
+      if (await objetExiste(targetName)) {
+        const { url, anonKey } = config();
+        return NextResponse.json({
+          alreadyExists: true,
+          path: targetName,
+          supabaseUrl: url,
+          supabaseAnonKey: anonKey,
+        });
+      }
+
+      const signed = await creerUploadSigne(targetName);
+      const { url, anonKey } = config();
+
+      return NextResponse.json({
+        alreadyExists: false,
+        path: targetName,
+        signedUrl: signed.signedUrl,
+        token: signed.token,
+        supabaseUrl: url,
+        supabaseAnonKey: anonKey,
+      });
+    }
+
+    if (action === "confirm-batch") {
+      const targetName = texte(body.targetName);
+      const articleNumeros = Array.isArray(body.articleNumeros)
+        ? body.articleNumeros.map((v) => texte(v).replace(/\.0$/, "")).filter(Boolean)
+        : [];
+
+      if (
+        !targetName ||
+        !/\.png$/i.test(targetName) ||
+        !articleNumeros.length
+      ) {
+        return NextResponse.json(
+          { error: "Paramètres confirm-batch invalides." },
+          { status: 400 },
+        );
+      }
+
+      if (!(await objetExiste(targetName))) {
+        return NextResponse.json(
+          { error: `Le fichier ${targetName} n'existe pas encore dans le bucket.` },
+          { status: 409 },
+        );
+      }
+
+      await mettreAJourPhotosArticles(articleNumeros, targetName);
+
+      return NextResponse.json({
+        ok: true,
+        linked: articleNumeros.length,
+        targetName,
+        storageConfirmed: true,
       });
     }
 
