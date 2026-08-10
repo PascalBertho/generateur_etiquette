@@ -28,12 +28,23 @@ function autorise(request: NextRequest): boolean {
 function config() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!url || !key) {
     throw new Error(
       "Configuration Supabase incomplète : SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis",
     );
   }
-  return { url, key };
+
+  if (!anonKey) {
+    throw new Error(
+      "Configuration Supabase incomplète : SUPABASE_ANON_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY est requis pour les uploads signés",
+    );
+  }
+
+  return { url, key, anonKey };
 }
 
 function headersSupabase(extra: Record<string, string> = {}) {
